@@ -1,0 +1,26 @@
+diff -Naurp requests-2.22.0/requests/certs.py requests-2.22.0-patch/requests/certs.py
+--- requests-2.22.0/requests/certs.py	2019-05-15 22:51:39.000000000 +0300
++++ requests-2.22.0-patch/requests/certs.py	2019-06-12 17:16:32.000000000 +0300
+@@ -12,7 +12,8 @@ If you are packaging Requests, e.g., for
+ environment, you can change the definition of where() to return a separately
+ packaged CA bundle.
+ """
+-from certifi import where
++def where():
++    return "/etc/ssl/cert.pem"
+ 
+ if __name__ == '__main__':
+     print(where())
+diff -Naurp requests-2.22.0/setup.py requests-2.22.0-patch/setup.py
+--- requests-2.22.0/setup.py	2019-05-15 22:51:39.000000000 +0300
++++ requests-2.22.0-patch/setup.py	2019-06-12 17:15:55.000000000 +0300
+@@ -44,8 +44,7 @@ packages = ['requests']
+ requires = [
+     'chardet>=3.0.2,<3.1.0',
+     'idna>=2.5,<2.9',
+-    'urllib3>=1.21.1,<1.26,!=1.25.0,!=1.25.1',
+-    'certifi>=2017.4.17'
++    'urllib3>=1.21.1,<1.26,!=1.25.0,!=1.25.1'
+ 
+ ]
+ test_requirements = [

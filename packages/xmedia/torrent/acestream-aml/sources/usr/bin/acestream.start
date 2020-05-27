@@ -1,0 +1,50 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+CHROOT_DIR="/storage/.config/acestream"
+LOG_FILE="/var/log/acestream.log"
+ETC_DIR="$CHROOT_DIR/system/etc"
+
+mkdir -p $CHROOT_DIR/system/data/data/org.acestream.engine/files/.ACEStream
+
+mkdir -p $CHROOT_DIR/dev
+mkdir -p $CHROOT_DIR/sys
+mkdir -p $CHROOT_DIR/proc
+mkdir -p $CHROOT_DIR/media
+
+mount -o bind /dev $CHROOT_DIR/dev &>/dev/null
+mount -t proc proc $CHROOT_DIR/proc &>/dev/null
+mount -t sysfs sysfs $CHROOT_DIR/sys &>/dev/null
+
+mkdir -p $ETC_DIR
+[ ! -f $ETC_DIR/hostname ] && cp -f /proc/sys/kernel/hostname $ETC_DIR/hostname
+[ ! -f $ETC_DIR/resolv.conf ] && cp -f /run/connman/resolv.conf $ETC_DIR/resolv.conf
+
+if [ ! -f $ETC_DIR/hosts ]; then
+  cp -f /run/connman/hosts $ETC_DIR/hosts
+  echo "67.215.246.10 router.bittorrent.com" >> $ETC_DIR/hosts
+  echo "212.129.33.59 dht.transmissionbt.com" >> $ETC_DIR/hosts
+  echo "82.221.103.244 router.utorrent.com" >> $ETC_DIR/hosts
+  echo "216.239.35.8 time.google.com" >> $ETC_DIR/hosts
+fi
+
+if [ ! -f $CHROOT_DIR/installed.busybox ]; then
+  rm -fr $CHROOT_DIR/bin
+  rm -fr $CHROOT_DIR/sbin
+  mkdir -p $CHROOT_DIR/bin
+  mkdir -p $CHROOT_DIR/sbin
+  /sbin/chroot $CHROOT_DIR /system/bin/busybox --install -s
+  touch $CHROOT_DIR/installed.busybox
+fi
+
+/sbin/chroot $CHROOT_DIR /bin/sh -c "/system/bin/acestream.sh"  > $LOG_FILE 2>&1 - << EOF
+from acestreamengine import Core
+
+params = "$@".split(' ')
+if params == ['']:
+    params = []
+
+Core.run(params)
+EOF

@@ -1,0 +1,102 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+ACE_TOKEN=`/usr/bin/curl -s 'http://localhost:6878/server/api?method=get_api_access_token' | /usr/bin/jq -r '.result[]'`
+
+if [ -z "$ACE_TOKEN" ]; then
+  echo "Error: AceStream is not running!"
+  exit
+fi
+
+CAT_NEWS="1"
+CAT_SHOW="1"
+CAT_LEARN="1"
+CAT_FILMS="1"
+CAT_EROS="1"
+CAT_MUSIC="0"
+CAT_SPORT="0"
+CAT_CHILDREN="0"
+CAT_REGION="0"
+CAT_RELIGION="0"
+CAT_ALLFON="0"
+
+SERVICE_DIR="/storage/.cache/services"
+[ -f $SERVICE_DIR/acettv.conf ] && . $SERVICE_DIR/acettv.conf
+
+CAT_LIST=""
+[ "$CAT_NEWS" == "1" ] && CAT_LIST="informational $CAT_LIST"
+[ "$CAT_SHOW" == "1" ] && CAT_LIST="entertaining $CAT_LIST"
+[ "$CAT_LEARN" == "1" ] && CAT_LIST="educational documentaries $CAT_LIST"
+[ "$CAT_FILMS" == "1" ] && CAT_LIST="movies $CAT_LIST"
+[ "$CAT_EROS" == "1" ] && CAT_LIST="erotic_18_plus $CAT_LIST"
+[ "$CAT_MUSIC" == "1" ] && CAT_LIST="music $CAT_LIST"
+[ "$CAT_SPORT" == "1" ] && CAT_LIST="sport $CAT_LIST"
+[ "$CAT_CHILDREN" == "1" ] && CAT_LIST="kids $CAT_LIST"
+[ "$CAT_REGION" == "1" ] && CAT_LIST="regional $CAT_LIST"
+[ "$CAT_RELIGION" == "1" ] && CAT_LIST="religion $CAT_LIST"
+[ "$CAT_ALLFON" == "1" ] && CAT_LIST="webcam $CAT_LIST"
+
+M3U_DIR="/storage/ttv-m3u"
+ACE_M3U="$M3U_DIR/AceSearch-TTV.m3u"
+TMP_DIR="/tmp/ace-search"
+CH_LOGO=
+
+build_m3u()
+{
+INFILE=$1
+CH_CAT=$2
+CH_LAST=
+cat $INFILE |  
+  while read -r LINE ; do
+      CH_NAME=`echo $LINE | awk -F\\# '{print $1}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      [ "$CH_LAST" == "$CH_NAME" ] && continue
+      CH_LAST="$CH_NAME"
+      CH_HASH=`echo $LINE | awk -F\\# '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+
+      echo "#EXTINF:-1 group-title=\"$CH_CAT\" tvg-logo=\"$CH_LOGO\",$CH_NAME" >> $INFILE.ace
+      echo "http://${URL_IP}:6878/ace/getstream?infohash=${CH_HASH}&.mp4" >> $INFILE.ace
+  done
+  rm -f $INFILE
+}
+
+rm -fr $TMP_DIR
+mkdir -p $TMP_DIR
+
+for ACE_CAT in $CAT_LIST; do
+  SEARCH_URL="http://localhost:6878/server/api?method=search&token=${ACE_TOKEN}&category=${ACE_CAT}&group_by_channels=1"
+  /usr/bin/curl -s "$SEARCH_URL" | /usr/bin/jq -r '.result|.results[]|.items[]|select(.status==2)|.name + " # " + .infohash' | sed 's|(allfon) ||g' | sort -k 1 > $TMP_DIR/$ACE_CAT.list
+done
+
+URL_IP=`ifconfig eth0 | awk '/inet addr:/ {print $2}' | sed 's/addr://'`
+if [ -z "$URL_IP" ]; then
+  URL_IP=`ifconfig wlan0 | awk '/inet addr:/ {print $2}' | sed 's/addr://'`
+  [ -z "$URL_IP" ] && URL_IP="127.0.0.1"
+fi
+
+for fpart in $(ls $TMP_DIR); do
+  if [ -s "$TMP_DIR/$fpart" ]; then
+    build_m3u "$TMP_DIR/$fpart" $(echo $fpart | cut -d. -f1) &
+  else
+    rm -f "$TMP_DIR/$fpart"
+  fi
+done
+
+patern='*.list'
+while true; do
+  usleep 250
+    [ $(ls /tmp/ace-search/$patern 2>/dev/null | wc -l) -lt 1 ] && break
+done
+
+PART_ACE=`ls $TMP_DIR/*.ace 2>/dev/null`
+if [ -n "$PART_ACE" ]; then
+  echo '#EXTM3U' > $ACE_M3U
+  cat $PART_ACE >> $ACE_M3U
+  echo "Done! Playlist created."
+else
+  echo "Error create playlist files!"
+fi
+
+rm -fr $TMP_DIR
+exit

@@ -1,0 +1,683 @@
+From 18fa20782ae9276b29930a7321954d1ed1e1cd8d Mon Sep 17 00:00:00 2001
+From: "E.Smith" <31170571+azlm8t@users.noreply.github.com>
+Date: Wed, 1 May 2019 12:21:33 +0100
+Subject: [PATCH 1/4] channels: Make const-correct.
+
+---
+ src/channels.c | 4 ++--
+ src/channels.h | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/channels.c b/src/channels.c
+index aa811d76a3..2e44cd82c5 100644
+--- a/src/channels.c
++++ b/src/channels.c
+@@ -820,10 +820,10 @@ void channel_remove_subscriber
+  * *************************************************************************/
+ 
+ const char *
+-channel_get_name ( channel_t *ch, const char *blank )
++channel_get_name ( const channel_t *ch, const char *blank )
+ {
+   const char *s;
+-  idnode_list_mapping_t *ilm;
++  const idnode_list_mapping_t *ilm;
+   if (ch->ch_name && *ch->ch_name) return ch->ch_name;
+   LIST_FOREACH(ilm, &ch->ch_services, ilm_in2_link)
+     if ((s = service_get_channel_name((service_t *)ilm->ilm_in1)))
+diff --git a/src/channels.h b/src/channels.h
+index aa97ec3160..7b377487d5 100644
+--- a/src/channels.h
++++ b/src/channels.h
+@@ -181,7 +181,7 @@ void channel_tag_unmap(channel_t *ch, void *origin);
+ 
+ int channel_tag_access(channel_tag_t *ct, struct access *a, int disabled);
+ 
+-const char *channel_get_name ( channel_t *ch, const char *blank );
++const char *channel_get_name ( const channel_t *ch, const char *blank );
+ int channel_set_name ( channel_t *ch, const char *name );
+ /// User API convenience function to rename all channels that
+ /// match "from". Lock must be held prior to call.
+
+From 495a3687c4ec0d872bc0177271de423711c9bbb7 Mon Sep 17 00:00:00 2001
+From: "E.Smith" <31170571+azlm8t@users.noreply.github.com>
+Date: Wed, 1 May 2019 12:37:32 +0100
+Subject: [PATCH 2/4] xmltv: Allow sending basic xmltv format, fixes #5630
+
+Some devices have very limited memory and can not handle our full
+xmltv output. For example, a current make of TV requires the xmltv
+should be less than 5MB and only parses titles, not descriptions.
+
+So we now add an enum to the user access so the user can specify
+a different format.
+
+Basic format gives you a limited xmltv document.
+
+Basic (no hash) gives you the limited xmltv document but avoids
+using hashes for channel ids and uses the name instead since some
+(broken) TVs require this.
+---
+ docs/property/xmltv_output_format.md |   9 +++
+ src/access.c                         |  26 ++++++
+ src/access.h                         |   8 ++
+ src/webui/static/app/acleditor.js    |   2 +-
+ src/webui/xmltv.c                    | 116 ++++++++++++++++++++-------
+ 5 files changed, 130 insertions(+), 31 deletions(-)
+ create mode 100644 docs/property/xmltv_output_format.md
+
+diff --git a/docs/property/xmltv_output_format.md b/docs/property/xmltv_output_format.md
+new file mode 100644
+index 0000000000..fb905bad15
+--- /dev/null
++++ b/docs/property/xmltv_output_format.md
+@@ -0,0 +1,9 @@
++:
++
++Option                           | Description
++---------------------------------|------------
++**All**                          | Include all information.
++**Basic**                        | Limited information for low memory devices.
++**Basic Alternative (No Hash)**  | Limited information for low memory devices that don't correctly process tv channel names.
++
++This setting can be overridden on a per-user basis, see [Access Entries](class/access).
+diff --git a/src/access.c b/src/access.c
+index 96bc3616d5..1d81383383 100644
+--- a/src/access.c
++++ b/src/access.c
+@@ -292,6 +292,7 @@ access_copy(access_t *src)
+     dst->aa_chtags_exclude = htsmsg_copy(src->aa_chtags_exclude);
+   if (src->aa_auth)
+     dst->aa_auth = strdup(src->aa_auth);
++  dst->aa_xmltv_output_format = src->aa_xmltv_output_format;
+   return dst;
+ }
+ 
+@@ -687,6 +688,8 @@ access_update(access_t *a, access_entry_t *ae)
+     else
+       a->aa_rights |= ae->ae_rights;
+   }
++
++  a->aa_xmltv_output_format = ae->ae_xmltv_output_format;
+ }
+ 
+ /**
+@@ -1412,6 +1415,18 @@ access_entry_conn_limit_type_enum ( void *p, const char *lang )
+   return strtab2htsmsg(conn_limit_type_tab, 1, lang);
+ }
+ 
++static htsmsg_t *
++access_entry_xmltv_output_format_enum ( void *p, const char *lang )
++{
++  static struct strtab
++  xmltv_output_format_tab[] = {
++    { N_("All"),                           ACCESS_XMLTV_OUTPUT_FORMAT_ALL },
++    { N_("Basic"),                         ACCESS_XMLTV_OUTPUT_FORMAT_BASIC },
++    { N_("Basic Alternative (No Hash)"),   ACCESS_XMLTV_OUTPUT_FORMAT_BASIC_NO_HASH },
++  };
++  return strtab2htsmsg(xmltv_output_format_tab, 1, lang);
++}
++
+ htsmsg_t *
+ language_get_list ( void *obj, const char *lang )
+ {
+@@ -1656,6 +1671,7 @@ PROP_DOC(connection_limit)
+ PROP_DOC(persistent_viewlevel)
+ PROP_DOC(streaming_profile)
+ PROP_DOC(change_parameters)
++PROP_DOC(xmltv_output_format)
+ 
+ const idclass_t access_entry_class = {
+   .ic_class      = "access",
+@@ -1903,6 +1919,16 @@ const idclass_t access_entry_class = {
+       .rend     = access_entry_chtag_rend,
+       .opts     = PO_ADVANCED,
+     },
++    {
++      .type     = PT_INT,
++      .id       = "xmltv_output_format",
++      .name     = N_("Format for xmltv output"),
++      .desc     = N_("Specify format for xmltv output."),
++      .doc      = prop_doc_xmltv_output_format,
++      .off      = offsetof(access_entry_t, ae_xmltv_output_format),
++      .list     = access_entry_xmltv_output_format_enum,
++      .opts     = PO_ADVANCED | PO_DOC_NLIST,
++    },
+     {
+       .type     = PT_STR,
+       .id       = "comment",
+diff --git a/src/access.h b/src/access.h
+index 9f84c7fdc7..545ebec6fb 100644
+--- a/src/access.h
++++ b/src/access.h
+@@ -94,6 +94,12 @@ enum {
+   ACCESS_CONN_LIMIT_TYPE_DVR,
+ };
+ 
++enum {
++  ACCESS_XMLTV_OUTPUT_FORMAT_ALL = 0,
++  ACCESS_XMLTV_OUTPUT_FORMAT_BASIC,
++  ACCESS_XMLTV_OUTPUT_FORMAT_BASIC_NO_HASH,
++};
++
+ typedef struct access_entry {
+   idnode_t ae_id;
+ 
+@@ -124,6 +130,7 @@ typedef struct access_entry {
+   int ae_conn_limit_type;
+   uint32_t ae_conn_limit;
+   int ae_change_conn_limit;
++  int ae_xmltv_output_format;
+ 
+   int ae_dvr;
+   int ae_htsp_dvr;
+@@ -171,6 +178,7 @@ typedef struct access {
+   htsmsg_t *aa_chtags;
+   int       aa_match;
+   uint32_t  aa_conn_limit;
++  uint32_t  aa_xmltv_output_format;
+   uint32_t  aa_conn_limit_streaming;
+   uint32_t  aa_conn_limit_dvr;
+   uint32_t  aa_conn_streaming;
+diff --git a/src/webui/static/app/acleditor.js b/src/webui/static/app/acleditor.js
+index bed8d54f2d..68c1a928ab 100644
+--- a/src/webui/static/app/acleditor.js
++++ b/src/webui/static/app/acleditor.js
+@@ -15,7 +15,7 @@ tvheadend.acleditor = function(panel, index)
+                 'streaming,profile,conn_limit_type,conn_limit,' +
+                 'dvr,htsp_anonymize,dvr_config,' +
+                 'channel_min,channel_max,channel_tag_exclude,' +
+-                'channel_tag,comment';
++                'channel_tag,xmltv_output_format,comment';
+ 
+     tvheadend.idnode_grid(panel, {
+         id: 'access_entry',
+diff --git a/src/webui/xmltv.c b/src/webui/xmltv.c
+index 149d582e7d..ebb050202e 100644
+--- a/src/webui/xmltv.c
++++ b/src/webui/xmltv.c
+@@ -62,18 +62,46 @@ http_xmltv_end(htsbuf_queue_t *hq)
+   htsbuf_append_str(hq, "</tv>\n");
+ }
+ 
++
++/** Determine name to use for the channel based on the
++ * user's settings. This is done because some TVs have
++ * broken parsers that require a "user readable" name
++ * for the channel.
++ *
++ * @param buf Buffer that is used if we return an idnode.
++ *
++ * @return Buffer containing the name. This might not
++ * be the same as the passed in temporary buffer.
++ *
++ */
++static const char *
++http_xmltv_channel_get_name(const http_connection_t *hc,
++                            const channel_t *ch,
++                            char *buf,
++                            size_t buf_len)
++{
++  const int of = hc->hc_access->aa_xmltv_output_format;
++
++  if (of == ACCESS_XMLTV_OUTPUT_FORMAT_BASIC_NO_HASH)
++    return channel_get_name(ch, idnode_uuid_as_str(&ch->ch_id, buf));
++  else
++    return idnode_uuid_as_str(&ch->ch_id, buf);
++}
++
++
+ /*
+  *
+  */
+ static void
+-http_xmltv_channel_add(htsbuf_queue_t *hq, int flags, const char *hostpath, channel_t *ch)
++http_xmltv_channel_add(http_connection_t *hc, htsbuf_queue_t *hq, int flags, const char *hostpath, channel_t *ch)
+ {
+   const char *icon = channel_get_icon(ch);
+   char ubuf[UUID_HEX_SIZE];
+   const char *tag;
+   int64_t lcn;
+-  htsbuf_qprintf(hq, "<channel id=\"%s\">\n  <display-name>",
+-                 idnode_uuid_as_str(&ch->ch_id, ubuf));
++  htsbuf_qprintf(hq, "<channel id=\"");
++  htsbuf_append_and_escape_xml(hq, http_xmltv_channel_get_name(hc, ch, ubuf, sizeof ubuf));
++  htsbuf_qprintf(hq, "\">\n  <display-name>");
+   htsbuf_append_and_escape_xml(hq, channel_get_name(ch, ""));
+   htsbuf_append_str(hq, "</display-name>\n");
+   lcn = channel_get_number(ch);
+@@ -133,35 +161,28 @@ _http_xmltv_add_episode_num(htsbuf_queue_t *hq, uint16_t num, uint16_t cnt)
+   }
+ }
+ 
+-/*
+- *
++/** Output long description fields of the programme which are
++ * not output for basic/limited devices.
+  */
+ static void
+-http_xmltv_programme_one(htsbuf_queue_t *hq, const char *hostpath,
+-                         channel_t *ch, epg_broadcast_t *ebc)
++http_xmltv_programme_one_long(const http_connection_t *hc,
++                              htsbuf_queue_t *hq, const char *hostpath,
++                              const channel_t *ch, const epg_broadcast_t *ebc)
+ {
+-  epg_episode_num_t epnum;
+-  char start[32], stop[32], ubuf[UUID_HEX_SIZE];
+   lang_str_ele_t *lse;
+   epg_genre_t *genre;
+   char buf[64];
+ 
+-  if (ebc->title == NULL) return;
+-  http_xmltv_time(start, ebc->start);
+-  http_xmltv_time(stop, ebc->stop);
+-  htsbuf_qprintf(hq, "<programme start=\"%s\" stop=\"%s\" channel=\"%s\">\n",
+-                 start, stop, idnode_uuid_as_str(&ch->ch_id, ubuf));
+-  RB_FOREACH(lse, ebc->title, link) {
+-    htsbuf_qprintf(hq, "  <title lang=\"%s\">", lse->lang);
+-    htsbuf_append_and_escape_xml(hq, lse->str);
+-    htsbuf_append_str(hq, "</title>\n");
+-  }
+   if (ebc->subtitle)
+     RB_FOREACH(lse, ebc->subtitle, link) {
+-      htsbuf_qprintf(hq, "  <sub-title lang=\"%s\">", lse->lang);
+-      htsbuf_append_and_escape_xml(hq, lse->str);
+-      htsbuf_append_str(hq, "</sub-title>\n");
++      /* Ignore empty sub-titles */
++      if (!strempty(lse->str)) {
++          htsbuf_qprintf(hq, "  <sub-title lang=\"%s\">", lse->lang);
++          htsbuf_append_and_escape_xml(hq, lse->str);
++          htsbuf_append_str(hq, "</sub-title>\n");
++        }
+     }
++
+   if (ebc->description)
+     RB_FOREACH(lse, ebc->description, link) {
+       htsbuf_qprintf(hq, "  <desc lang=\"%s\">", lse->lang);
+@@ -195,6 +216,41 @@ http_xmltv_programme_one(htsbuf_queue_t *hq, const char *hostpath,
+     }
+   }
+   _http_xmltv_programme_write_string_list(hq, ebc->keyword, "keyword");
++}
++
++/*
++ *
++ */
++static void
++http_xmltv_programme_one(const http_connection_t *hc,
++                         htsbuf_queue_t *hq, const char *hostpath,
++                         const channel_t *ch, const epg_broadcast_t *ebc)
++{
++  epg_episode_num_t epnum;
++  char start[32], stop[32], ubuf[UUID_HEX_SIZE];
++  lang_str_ele_t *lse;
++  const int of = hc->hc_access->aa_xmltv_output_format;
++
++  if (ebc->title == NULL) return;
++  http_xmltv_time(start, ebc->start);
++  http_xmltv_time(stop, ebc->stop);
++  htsbuf_qprintf(hq, "<programme start=\"%s\" stop=\"%s\" channel=\"",
++                 start, stop);
++  htsbuf_append_and_escape_xml(hq, http_xmltv_channel_get_name(hc, ch, ubuf, sizeof ubuf));
++  htsbuf_qprintf(hq, "\">\n");
++  RB_FOREACH(lse, ebc->title, link) {
++    htsbuf_qprintf(hq, "  <title lang=\"%s\">", lse->lang);
++    htsbuf_append_and_escape_xml(hq, lse->str);
++    htsbuf_append_str(hq, "</title>\n");
++  }
++
++  /* Basic formats are for low-memory devices that
++   * only want very basic information.
++   */
++  if (of != ACCESS_XMLTV_OUTPUT_FORMAT_BASIC &&
++      of != ACCESS_XMLTV_OUTPUT_FORMAT_BASIC_NO_HASH) {
++    http_xmltv_programme_one_long(hc, hq, hostpath, ch, ebc);
++  }
+ 
+   /* We can't use epg_broadcast_epnumber_format since we need a specific
+    * format whereas that can return an arbitrary text string.
+@@ -216,12 +272,12 @@ http_xmltv_programme_one(htsbuf_queue_t *hq, const char *hostpath,
+  *
+  */
+ static void
+-http_xmltv_programme_add(htsbuf_queue_t *hq, const char *hostpath, channel_t *ch)
++http_xmltv_programme_add(const http_connection_t *hc, htsbuf_queue_t *hq, const char *hostpath, channel_t *ch)
+ {
+   epg_broadcast_t *ebc;
+ 
+   RB_FOREACH(ebc, &ch->ch_epg_schedule, sched_link)
+-    http_xmltv_programme_one(hq, hostpath, ch, ebc);
++    http_xmltv_programme_one(hc, hq, hostpath, ch, ebc);
+ }
+ 
+ /**
+@@ -237,8 +293,8 @@ http_xmltv_channel(http_connection_t *hc, int flags, channel_t *channel)
+ 
+   http_get_hostpath(hc, hostpath, sizeof(hostpath));
+   http_xmltv_begin(&hc->hc_reply);
+-  http_xmltv_channel_add(&hc->hc_reply, flags, hostpath, channel);
+-  http_xmltv_programme_add(&hc->hc_reply, hostpath, channel);
++  http_xmltv_channel_add(hc, &hc->hc_reply, flags, hostpath, channel);
++  http_xmltv_programme_add(hc, &hc->hc_reply, hostpath, channel);
+   http_xmltv_end(&hc->hc_reply);
+   return 0;
+ }
+@@ -264,13 +320,13 @@ http_xmltv_tag(http_connection_t *hc, int flags, channel_tag_t *tag)
+     ch = (channel_t *)ilm->ilm_in2;
+     if (http_access_verify_channel(hc, ACCESS_STREAMING, ch))
+       continue;
+-    http_xmltv_channel_add(&hc->hc_reply, flags, hostpath, ch);
++    http_xmltv_channel_add(hc, &hc->hc_reply, flags, hostpath, ch);
+   }
+   LIST_FOREACH(ilm, &tag->ct_ctms, ilm_in1_link) {
+     ch = (channel_t *)ilm->ilm_in2;
+     if (http_access_verify_channel(hc, ACCESS_STREAMING, ch))
+       continue;
+-    http_xmltv_programme_add(&hc->hc_reply, hostpath, ch);
++    http_xmltv_programme_add(hc, &hc->hc_reply, hostpath, ch);
+   }
+   http_xmltv_end(&hc->hc_reply);
+ 
+@@ -295,12 +351,12 @@ http_xmltv_channel_list(http_connection_t *hc, int flags)
+   CHANNEL_FOREACH(ch) {
+     if (http_access_verify_channel(hc, ACCESS_STREAMING, ch))
+       continue;
+-    http_xmltv_channel_add(&hc->hc_reply, flags, hostpath, ch);
++    http_xmltv_channel_add(hc, &hc->hc_reply, flags, hostpath, ch);
+   }
+   CHANNEL_FOREACH(ch) {
+     if (http_access_verify_channel(hc, ACCESS_STREAMING, ch))
+       continue;
+-    http_xmltv_programme_add(&hc->hc_reply, hostpath, ch);
++    http_xmltv_programme_add(hc, &hc->hc_reply, hostpath, ch);
+   }
+   http_xmltv_end(&hc->hc_reply);
+ 
+
+From 915eb209769deb81eb0a69f8db20298bde9c1267 Mon Sep 17 00:00:00 2001
+From: "E.Smith" <31170571+azlm8t@users.noreply.github.com>
+Date: Wed, 1 May 2019 12:55:14 +0100
+Subject: [PATCH 3/4] htsp: Allow basic htsp format, fixes #5630
+
+The tvguide can be very large for very low memory devices. So allow
+a basic format which excludes the long description fields, thus
+reducing memory overhead.
+---
+ docs/property/htsp_output_format.md |  8 +++++
+ src/access.c                        | 24 +++++++++++++
+ src/access.h                        |  7 ++++
+ src/htsp_server.c                   | 56 ++++++++++++++++-------------
+ src/webui/static/app/acleditor.js   |  2 +-
+ 5 files changed, 71 insertions(+), 26 deletions(-)
+ create mode 100644 docs/property/htsp_output_format.md
+
+diff --git a/docs/property/htsp_output_format.md b/docs/property/htsp_output_format.md
+new file mode 100644
+index 0000000000..7ef2353f6c
+--- /dev/null
++++ b/docs/property/htsp_output_format.md
+@@ -0,0 +1,8 @@
++:
++
++Option                           | Description
++---------------------------------|------------
++**All**                          | Include all information.
++**Basic**                        | Limited information for low memory devices.
++
++This setting can be overridden on a per-user basis, see [Access Entries](class/access).
+diff --git a/src/access.c b/src/access.c
+index 1d81383383..be0fd7ab10 100644
+--- a/src/access.c
++++ b/src/access.c
+@@ -293,6 +293,7 @@ access_copy(access_t *src)
+   if (src->aa_auth)
+     dst->aa_auth = strdup(src->aa_auth);
+   dst->aa_xmltv_output_format = src->aa_xmltv_output_format;
++  dst->aa_htsp_output_format = src->aa_htsp_output_format;
+   return dst;
+ }
+ 
+@@ -690,6 +691,7 @@ access_update(access_t *a, access_entry_t *ae)
+   }
+ 
+   a->aa_xmltv_output_format = ae->ae_xmltv_output_format;
++  a->aa_htsp_output_format = ae->ae_htsp_output_format;
+ }
+ 
+ /**
+@@ -1427,6 +1429,17 @@ access_entry_xmltv_output_format_enum ( void *p, const char *lang )
+   return strtab2htsmsg(xmltv_output_format_tab, 1, lang);
+ }
+ 
++static htsmsg_t *
++access_entry_htsp_output_format_enum ( void *p, const char *lang )
++{
++  static struct strtab
++  htsp_output_format_tab[] = {
++    { N_("All"),                           ACCESS_HTSP_OUTPUT_FORMAT_ALL },
++    { N_("Basic"),                         ACCESS_HTSP_OUTPUT_FORMAT_BASIC },
++  };
++  return strtab2htsmsg(htsp_output_format_tab, 1, lang);
++}
++
+ htsmsg_t *
+ language_get_list ( void *obj, const char *lang )
+ {
+@@ -1672,6 +1685,7 @@ PROP_DOC(persistent_viewlevel)
+ PROP_DOC(streaming_profile)
+ PROP_DOC(change_parameters)
+ PROP_DOC(xmltv_output_format)
++PROP_DOC(htsp_output_format)
+ 
+ const idclass_t access_entry_class = {
+   .ic_class      = "access",
+@@ -1929,6 +1943,16 @@ const idclass_t access_entry_class = {
+       .list     = access_entry_xmltv_output_format_enum,
+       .opts     = PO_ADVANCED | PO_DOC_NLIST,
+     },
++    {
++      .type     = PT_INT,
++      .id       = "htsp_output_format",
++      .name     = N_("Format for htsp output"),
++      .desc     = N_("Specify format for htsp output."),
++      .doc      = prop_doc_htsp_output_format,
++      .off      = offsetof(access_entry_t, ae_htsp_output_format),
++      .list     = access_entry_htsp_output_format_enum,
++      .opts     = PO_ADVANCED | PO_DOC_NLIST,
++    },
+     {
+       .type     = PT_STR,
+       .id       = "comment",
+diff --git a/src/access.h b/src/access.h
+index 545ebec6fb..a188b0eb34 100644
+--- a/src/access.h
++++ b/src/access.h
+@@ -100,6 +100,11 @@ enum {
+   ACCESS_XMLTV_OUTPUT_FORMAT_BASIC_NO_HASH,
+ };
+ 
++enum {
++  ACCESS_HTSP_OUTPUT_FORMAT_ALL = 0,
++  ACCESS_HTSP_OUTPUT_FORMAT_BASIC,
++};
++
+ typedef struct access_entry {
+   idnode_t ae_id;
+ 
+@@ -131,6 +136,7 @@ typedef struct access_entry {
+   uint32_t ae_conn_limit;
+   int ae_change_conn_limit;
+   int ae_xmltv_output_format;
++  int ae_htsp_output_format;
+ 
+   int ae_dvr;
+   int ae_htsp_dvr;
+@@ -179,6 +185,7 @@ typedef struct access {
+   int       aa_match;
+   uint32_t  aa_conn_limit;
+   uint32_t  aa_xmltv_output_format;
++  uint32_t  aa_htsp_output_format;
+   uint32_t  aa_conn_limit_streaming;
+   uint32_t  aa_conn_limit_dvr;
+   uint32_t  aa_conn_streaming;
+diff --git a/src/htsp_server.c b/src/htsp_server.c
+index a7f8a79e06..d61b45eb30 100644
+--- a/src/htsp_server.c
++++ b/src/htsp_server.c
+@@ -1237,6 +1237,7 @@ htsp_build_event
+   epg_episode_num_t epnum;
+   const char *str;
+   char buf[512];
++  const int of = htsp->htsp_granted_access->aa_htsp_output_format;
+ 
+   /* Ignore? */
+   if (update && e->updated <= update) return NULL;
+@@ -1253,35 +1254,40 @@ htsp_build_event
+   htsmsg_add_s64(out, "stop", e->stop);
+   if ((str = epg_broadcast_get_title(e, lang)))
+     htsmsg_add_str(out, "title", str);
+-  if (htsp->htsp_version < 32) {
+-    if ((str = epg_broadcast_get_description(e, lang))) {
+-      htsmsg_add_str(out, "description", str);
+-      if ((str = epg_broadcast_get_summary(e, lang)))
+-        htsmsg_add_str(out, "summary", str);
+-      if ((str = epg_broadcast_get_subtitle(e, lang)))
+-        htsmsg_add_str(out, "subtitle", str);
+-    } else if ((str = epg_broadcast_get_summary(e, lang))) {
+-      htsmsg_add_str(out, "description", str);
++  /* For basic format, we want to skip the large text fields
++   * and go straight to doing the low-overhead fields.
++   */
++  if (of != ACCESS_HTSP_OUTPUT_FORMAT_BASIC) {
++    if (htsp->htsp_version < 32) {
++      if ((str = epg_broadcast_get_description(e, lang))) {
++        htsmsg_add_str(out, "description", str);
++        if ((str = epg_broadcast_get_summary(e, lang)))
++          htsmsg_add_str(out, "summary", str);
++        if ((str = epg_broadcast_get_subtitle(e, lang)))
++          htsmsg_add_str(out, "subtitle", str);
++      } else if ((str = epg_broadcast_get_summary(e, lang))) {
++        htsmsg_add_str(out, "description", str);
++        if ((str = epg_broadcast_get_subtitle(e, lang)))
++          htsmsg_add_str(out, "subtitle", str);
++      } else if ((str = epg_broadcast_get_subtitle(e, lang))) {
++        htsmsg_add_str(out, "description", str);
++      }
++    } else {
+       if ((str = epg_broadcast_get_subtitle(e, lang)))
+         htsmsg_add_str(out, "subtitle", str);
+-    } else if ((str = epg_broadcast_get_subtitle(e, lang))) {
+-      htsmsg_add_str(out, "description", str);
++      if ((str = epg_broadcast_get_summary(e, lang)))
++        htsmsg_add_str(out, "summary", str);
++      if ((str = epg_broadcast_get_description(e, lang)))
++        htsmsg_add_str(out, "description", str);
+     }
+-  } else {
+-    if ((str = epg_broadcast_get_subtitle(e, lang)))
+-      htsmsg_add_str(out, "subtitle", str);
+-    if ((str = epg_broadcast_get_summary(e, lang)))
+-      htsmsg_add_str(out, "summary", str);
+-    if ((str = epg_broadcast_get_description(e, lang)))
+-      htsmsg_add_str(out, "description", str);
+-  }
+ 
+-  if (e->credits)
+-    htsmsg_add_msg(out, "credits", htsmsg_copy(e->credits));
+-  if (e->category)
+-    string_list_serialize(e->category, out, "category");
+-  if (e->keyword)
+-    string_list_serialize(e->keyword, out, "keyword");
++    if (e->credits)
++      htsmsg_add_msg(out, "credits", htsmsg_copy(e->credits));
++    if (e->category)
++      string_list_serialize(e->category, out, "category");
++    if (e->keyword)
++      string_list_serialize(e->keyword, out, "keyword");
++  }
+ 
+   if (e->serieslink)
+     htsmsg_add_str(out, "serieslinkUri", e->serieslink->uri);
+diff --git a/src/webui/static/app/acleditor.js b/src/webui/static/app/acleditor.js
+index 68c1a928ab..a6bb992e92 100644
+--- a/src/webui/static/app/acleditor.js
++++ b/src/webui/static/app/acleditor.js
+@@ -15,7 +15,7 @@ tvheadend.acleditor = function(panel, index)
+                 'streaming,profile,conn_limit_type,conn_limit,' +
+                 'dvr,htsp_anonymize,dvr_config,' +
+                 'channel_min,channel_max,channel_tag_exclude,' +
+-                'channel_tag,xmltv_output_format,comment';
++                'channel_tag,xmltv_output_format,htsp_output_format,comment';
+ 
+     tvheadend.idnode_grid(panel, {
+         id: 'access_entry',
+
+From 5e24b9d632623a7d9723f91a4ed35d10c0af90d6 Mon Sep 17 00:00:00 2001
+From: "E.Smith" <31170571+azlm8t@users.noreply.github.com>
+Date: Wed, 1 May 2019 18:52:10 +0100
+Subject: [PATCH 4/4] xmltv: Avoid outputting lang tags in xmltv for only one
+ language, fixes #5630
+
+For most sources of guide information, we only have one language.
+If we output xmltv with language tags just makes the xmltv output
+larger with no benefit.
+---
+ src/webui/xmltv.c | 20 ++++++++++++++++----
+ 1 file changed, 16 insertions(+), 4 deletions(-)
+
+diff --git a/src/webui/xmltv.c b/src/webui/xmltv.c
+index ebb050202e..3ce7d87598 100644
+--- a/src/webui/xmltv.c
++++ b/src/webui/xmltv.c
+@@ -161,6 +161,18 @@ _http_xmltv_add_episode_num(htsbuf_queue_t *hq, uint16_t num, uint16_t cnt)
+   }
+ }
+ 
++/// Output a start tag for the tag and include a lang="xx" _only_ if we
++/// have more than one language. This avoids outputting lots of tags for
++/// the common case of only having one language, so is useful for very low
++/// memory devices.
++#define HTTP_XMLTV_OUTPUT_START_TAG_WITH_LANG(hq,rb_tree,lang_str,tag)  \
++  do {                                                                  \
++    htsbuf_qprintf(hq, "  <%s", tag);                                   \
++    if (rb_tree->entries != 1)                                          \
++      htsbuf_qprintf(hq, " lang=\"%s\"", lang_str->lang);               \
++    htsbuf_append_str(hq,">");                                          \
++  } while(0)
++
+ /** Output long description fields of the programme which are
+  * not output for basic/limited devices.
+  */
+@@ -177,7 +189,7 @@ http_xmltv_programme_one_long(const http_connection_t *hc,
+     RB_FOREACH(lse, ebc->subtitle, link) {
+       /* Ignore empty sub-titles */
+       if (!strempty(lse->str)) {
+-          htsbuf_qprintf(hq, "  <sub-title lang=\"%s\">", lse->lang);
++          HTTP_XMLTV_OUTPUT_START_TAG_WITH_LANG(hq, ebc->subtitle, lse, "sub-title");
+           htsbuf_append_and_escape_xml(hq, lse->str);
+           htsbuf_append_str(hq, "</sub-title>\n");
+         }
+@@ -185,13 +197,13 @@ http_xmltv_programme_one_long(const http_connection_t *hc,
+ 
+   if (ebc->description)
+     RB_FOREACH(lse, ebc->description, link) {
+-      htsbuf_qprintf(hq, "  <desc lang=\"%s\">", lse->lang);
++      HTTP_XMLTV_OUTPUT_START_TAG_WITH_LANG(hq, ebc->description, lse, "desc");
+       htsbuf_append_and_escape_xml(hq, lse->str);
+       htsbuf_append_str(hq, "</desc>\n");
+     }
+   else if (ebc->summary)
+     RB_FOREACH(lse, ebc->summary, link) {
+-      htsbuf_qprintf(hq, "  <desc lang=\"%s\">", lse->lang);
++      HTTP_XMLTV_OUTPUT_START_TAG_WITH_LANG(hq, ebc->summary, lse, "desc");
+       htsbuf_append_and_escape_xml(hq, lse->str);
+       htsbuf_append_str(hq, "</desc>\n");
+     }
+@@ -239,7 +251,7 @@ http_xmltv_programme_one(const http_connection_t *hc,
+   htsbuf_append_and_escape_xml(hq, http_xmltv_channel_get_name(hc, ch, ubuf, sizeof ubuf));
+   htsbuf_qprintf(hq, "\">\n");
+   RB_FOREACH(lse, ebc->title, link) {
+-    htsbuf_qprintf(hq, "  <title lang=\"%s\">", lse->lang);
++    HTTP_XMLTV_OUTPUT_START_TAG_WITH_LANG(hq, ebc->title, lse, "title");
+     htsbuf_append_and_escape_xml(hq, lse->str);
+     htsbuf_append_str(hq, "</title>\n");
+   }

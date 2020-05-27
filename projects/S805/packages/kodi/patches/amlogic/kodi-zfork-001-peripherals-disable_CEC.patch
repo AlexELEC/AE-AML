@@ -1,0 +1,12 @@
+diff -Naurp kodi-7a4650f/system/peripherals.xml kodi-7a4650f-patch/system/peripherals.xml
+--- kodi-7a4650f/system/peripherals.xml	2018-08-07 14:50:54.000000000 +0300
++++ kodi-7a4650f-patch/system/peripherals.xml	2018-08-07 14:54:05.000000000 +0300
+@@ -9,7 +9,7 @@
+   </peripheral>
+ 
+   <peripheral bus="cec" name="CEC Adapter" mapTo="cec">
+-    <setting key="enabled" type="bool" value="1" label="305" order="1" />
++    <setting key="enabled" type="bool" value="0" label="305" order="1" />
+     <setting key="activate_source" type="bool" value="1" label="36020" order="2" />
+     <setting key="wake_devices" type="enum" value="36037" label="36007" lvalues="36037|36038|36039|231" order="3" />
+     <setting key="standby_devices" type="enum" value="36037" label="36008" lvalues="36037|36038|36039|231" order="4" />

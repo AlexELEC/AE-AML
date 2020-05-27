@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+NO_CHECK=$1
+DATE_FILE=`date +%Y-%m-%d`
+DATE_HOUR=`date +%H`
+XMLTV_DIR="/storage/ttv-xmltv"
+XMLTV_FILE="$XMLTV_DIR/$DATE_FILE-ttvxmltv.xml.gz"
+XMLTV_HOUR="$XMLTV_DIR/xmltv.hour"
+
+if [ -e "$XMLTV_FILE" ]; then
+  HOUR=0
+  [ -f "$XMLTV_HOUR" ] && . $XMLTV_HOUR
+  TIME_S=$(expr $DATE_HOUR - $HOUR)
+  [ "$NO_CHECK" != "full" -a "$TIME_S" -lt "2" ] && exit
+fi
+
+SERVICE_DIR="/storage/.cache/services"
+[ -f $SERVICE_DIR/acerun.conf ] && . $SERVICE_DIR/acerun.conf
+
+if [ "$TTV_LOGIN" == "@TTV_WORD@" ]; then
+  TTV_LOGIN="@TTV_LOGIN@"
+  TTV_PASSW="@TTV_PASSW@"
+elif [ -z "$TTV_LOGIN" -o -z "$TTV_PASSW" ]; then
+  exit
+fi
+
+TTV_API_URL="http://1ttvapi.top/v3"
+GUID=`cat /proc/sys/kernel/random/uuid | sed 's|-||g'`
+TTV_SESSION=`curl -s "$TTV_API_URL/auth.php?username=$TTV_LOGIN&password=$TTV_PASSW&typeresult=json&application=xbmc&guid=$GUID" | jq -r '.session'`
+[ -z "$TTV_SESSION" ] && exit
+
+rm -fr $XMLTV_DIR
+mkdir -p $XMLTV_DIR
+
+TIME_ZONE="+0200"
+[ -f "/storage/.config/acestream/ttv-xmltv-epg.conf" ] && . /storage/.config/acestream/ttv-xmltv-epg.conf
+
+curl -s -o - "$TTV_API_URL/translation_epg_full_xmltv.php?session=$TTV_SESSION" | sed "s|+0300|$TIME_ZONE|g" | gzip > "$XMLTV_FILE"
+echo "HOUR=\"$DATE_HOUR\"" > "$XMLTV_HOUR"
+
+( cd $XMLTV_DIR;
+  ln -sf $DATE_FILE-ttvxmltv.xml.gz ttvepg.xml.gz
+)
+
+echo "TTV xmltv: complete."

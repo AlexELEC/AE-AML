@@ -1,0 +1,45 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+INSTALLED_MEMORY=$(cat /proc/meminfo | grep 'MemTotal:' | awk '{print $2}')
+SYSTEM_TORAM_LIMIT=2048000
+
+if [ "$INSTALLED_MEMORY" -lt "$SYSTEM_TORAM_LIMIT" ]; then
+  modprobe zram num_devices=4
+  echo 256M > /sys/block/zram0/disksize
+  echo 256M > /sys/block/zram1/disksize
+  echo 256M > /sys/block/zram2/disksize
+  echo 256M > /sys/block/zram3/disksize
+  /sbin/mkswap /dev/zram0
+  /sbin/mkswap /dev/zram1
+  /sbin/mkswap /dev/zram2
+  /sbin/mkswap /dev/zram3
+  /usr/sbin/swapon -p 10 /dev/zram0
+  /usr/sbin/swapon -p 10 /dev/zram1
+  /usr/sbin/swapon -p 10 /dev/zram2
+  /usr/sbin/swapon -p 10 /dev/zram3
+fi
+
+# S905: set hotplug default governor
+if [ -e /proc/device-tree/mali@d00c0000/compatible ]; then
+  echo hotplug > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+
+  for policy in $(find /sys/devices/system/cpu/cpufreq -name hotplug 2>/dev/null) ; do
+    echo 1 > $policy/cpu_num_plug_once
+    echo 2 > $policy/cpu_num_unplug_once
+  done
+
+# S912: set 1GHz minimum CPU speed for both clusters
+elif [ -e /proc/device-tree/t82x@d00c0000/compatible ]; then
+  echo 1000000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+  echo 1000000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
+
+  for policy in $(find /sys/devices/system/cpu/cpufreq -name ondemand 2>/dev/null) ; do
+    echo 1 > $policy/io_is_busy
+    echo 50 > $policy/up_threshold
+    echo 100000 > $policy/sampling_rate
+    echo 50 > $policy/sampling_down_factor
+  done
+fi

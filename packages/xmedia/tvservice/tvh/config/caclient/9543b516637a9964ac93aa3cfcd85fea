@@ -1,0 +1,11 @@
+{
+	"mode": 5,
+	"camdfilename": "127.0.0.1",
+	"port": 9000,
+	"cwmode": 0,
+	"class": "caclient_capmt",
+	"index": 1,
+	"enabled": false,
+	"name": "Oscam",
+	"comment": "local Oscam"
+}

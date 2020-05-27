@@ -1,0 +1,15 @@
+diff -Naurp tvheadend-1873c1c/src/webui/webui.c tvheadend-1873c1c-patch/src/webui/webui.c
+--- tvheadend-1873c1c/src/webui/webui.c	2017-10-18 17:38:30.000000000 +0300
++++ tvheadend-1873c1c-patch/src/webui/webui.c	2017-10-19 16:02:44.000000000 +0300
+@@ -553,9 +553,9 @@ http_m3u_playlist_add(htsbuf_queue_t *hq
+   htsbuf_append_str(hq, "#EXTINF:-1");
+   if (logo) {
+     if (strncmp(logo, "imagecache/", 11) == 0)
+-      htsbuf_qprintf(hq, " logo=\"%s/%s\"", hostpath, logo);
++      htsbuf_qprintf(hq, " tvg-logo=\"%s/%s\"", hostpath, logo);
+     else
+-      htsbuf_qprintf(hq, " logo=\"%s\"", logo);
++      htsbuf_qprintf(hq, " tvg-logo=\"%s\"", logo);
+   }
+   if (epgid)
+     htsbuf_qprintf(hq, " tvg-id=\"%s\"", epgid);

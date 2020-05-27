@@ -1,0 +1,10 @@
+{
+	"limit": 0,
+	"caid_select": 0,
+	"caid_list": "",
+	"class": "caclient_dvbcam",
+	"index": 2,
+	"enabled": false,
+	"name": "Linux DVB CAM (CI/CI+)",
+	"comment": "Hardware descrambling using Linux DVB CAM devices"
+}

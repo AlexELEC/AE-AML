@@ -1,0 +1,14 @@
+diff -Naurp pvr.iptvsimple-90a8d6f/pvr.iptvsimple/addon.xml.in pvr.iptvsimple-90a8d6f-patch/pvr.iptvsimple/addon.xml.in
+--- pvr.iptvsimple-90a8d6f/pvr.iptvsimple/addon.xml.in	2018-11-04 09:24:56.000000000 +0200
++++ pvr.iptvsimple-90a8d6f-patch/pvr.iptvsimple/addon.xml.in	2019-01-11 12:24:59.000000000 +0200
+@@ -1,8 +1,8 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <addon
+   id="pvr.iptvsimple"
+-  version="3.5.8"
+-  name="PVR IPTV Simple Client"
++  version="4.5.8"
++  name="PVR IPTV Simple Client AE"
+   provider-name="nightik">
+   <requires>@ADDON_DEPENDS@</requires>
+   <extension

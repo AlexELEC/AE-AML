@@ -1,0 +1,26 @@
+diff -Naurp kodi-5e4f807/addons/resource.language.ru_ru/resources/strings.po kodi-5e4f807-patch/addons/resource.language.ru_ru/resources/strings.po
+--- kodi-5e4f807/addons/resource.language.ru_ru/resources/strings.po	2019-01-16 10:59:24.000000000 +0200
++++ kodi-5e4f807-patch/addons/resource.language.ru_ru/resources/strings.po	2019-01-16 11:18:26.000000000 +0200
+@@ -9131,7 +9131,7 @@ msgstr "Таймер выключениъ 
+ msgctxt "#20145"
+ msgid "Shutdown interval (in minutes)"
+-msgstr "Интервал выключения (мин.)"
++msgstr "Интервал выкл (мин)"
+ 
+ msgctxt "#20146"
+ msgid "Started, shutdown in {0:d}m"
+
+diff -Naurp kodi-7d27c5e/addons/resource.language.ru_ru/resources/strings.po kodi-7d27c5e-patch/addons/resource.language.ru_ru/resources/strings.po
+--- kodi-7d27c5e/addons/resource.language.ru_ru/resources/strings.po	2019-01-10 11:38:57.000000000 +0200
++++ kodi-7d27c5e-patch/addons/resource.language.ru_ru/resources/strings.po	2019-01-10 11:42:38.000000000 +0200
+@@ -4618,8 +4618,8 @@ msgid "Total uptime"
+ msgstr "Общее время работы"
+ 
+ msgctxt "#12395"
+-msgid "Battery level"
+-msgstr "Уровень батареи"
++msgid "Linux version"
++msgstr "Версия ядра"
+ 
+ msgctxt "#12600"
+ msgid "Weather"

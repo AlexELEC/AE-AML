@@ -1,0 +1,48 @@
+diff -Naurp kodi-85486a2/xbmc/GUIInfoManager.cpp kodi-85486a2-patch/xbmc/GUIInfoManager.cpp
+--- kodi-85486a2/xbmc/GUIInfoManager.cpp	2018-12-30 10:18:11.000000000 +0200
++++ kodi-85486a2-patch/xbmc/GUIInfoManager.cpp	2018-12-30 12:15:34.000000000 +0200
+@@ -1645,6 +1645,7 @@ const infomap system_labels[] =  {{ "has
+                                   { "stereoscopicmode", SYSTEM_STEREOSCOPIC_MODE },
+                                   { "hascms",           SYSTEM_HAS_CMS },
+                                   { "privacypolicy",    SYSTEM_PRIVACY_POLICY },
++                                  { "isnandinstall",    SYSTEM_ISNAND_INSTALL },
+                                   { "haspvraddon",      SYSTEM_HAS_PVR_ADDON }};
+ 
+ /// \page modules__infolabels_boolean_conditions
+diff -Naurp kodi-85486a2/xbmc/guilib/guiinfo/GUIInfoLabels.h kodi-85486a2-patch/xbmc/guilib/guiinfo/GUIInfoLabels.h
+--- kodi-85486a2/xbmc/guilib/guiinfo/GUIInfoLabels.h	2018-12-30 10:18:11.000000000 +0200
++++ kodi-85486a2-patch/xbmc/guilib/guiinfo/GUIInfoLabels.h	2018-12-30 12:13:12.000000000 +0200
+@@ -131,6 +131,7 @@
+ #define SYSTEM_INTERNET_STATE       159
+ #define SYSTEM_HAS_INPUT_HIDDEN     160
+ #define SYSTEM_HAS_PVR_ADDON        161
++#define SYSTEM_ISNAND_INSTALL       162
+ #define SYSTEM_ALARM_LESS_OR_EQUAL  180
+ #define SYSTEM_PROFILECOUNT         181
+ #define SYSTEM_ISFULLSCREEN         182
+diff -Naurp kodi-85486a2/xbmc/guilib/guiinfo/SystemGUIInfo.cpp kodi-85486a2-patch/xbmc/guilib/guiinfo/SystemGUIInfo.cpp
+--- kodi-85486a2/xbmc/guilib/guiinfo/SystemGUIInfo.cpp	2018-12-30 10:18:10.000000000 +0200
++++ kodi-85486a2-patch/xbmc/guilib/guiinfo/SystemGUIInfo.cpp	2018-12-30 12:19:29.000000000 +0200
+@@ -17,6 +17,7 @@
+ #include "guilib/GUIWindowManager.h"
+ #include "guilib/LocalizeStrings.h"
+ #include "network/Network.h"
++#include "utils/SysfsUtils.h"
+ #if defined(TARGET_DARWIN_OSX)
+ #include "platform/darwin/osx/smc.h"
+ #endif
+@@ -595,6 +596,14 @@ bool CSystemGUIInfo::GetBool(bool& value
+         value = currentTime >= startTime && currentTime < stopTime;
+       return true;
+     }
++    case SYSTEM_ISNAND_INSTALL:
++    {
++      if (SysfsUtils::Has("/var/lock/nand.lock"))
++        value = true;
++      else
++        value = false;
++      return true;
++    }
+     case SYSTEM_ALARM_LESS_OR_EQUAL:
+     {
+       int time = std::lrint(g_alarmClock.GetRemaining(info.GetData3()));

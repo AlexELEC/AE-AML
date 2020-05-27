@@ -1,0 +1,59 @@
+diff -Naurp linux-1be06c2/arch/arm/mach-meson8b/pm.c linux-1be06c2-patch/arch/arm/mach-meson8b/pm.c
+--- linux-1be06c2/arch/arm/mach-meson8b/pm.c	2019-02-05 17:59:05.000000000 +0200
++++ linux-1be06c2-patch/arch/arm/mach-meson8b/pm.c	2019-02-05 22:22:25.000000000 +0200
+@@ -20,6 +20,7 @@
+ #include <asm/cacheflush.h>
+ #include <asm/delay.h>
+ #include <asm/uaccess.h>
++#include <linux/gpio.h>
+ 
+ #include <mach/pm.h>
+ #include <mach/am_regs.h>
+@@ -36,6 +37,7 @@
+ #include <mach/meson-secure.h>
+ #endif
+ 
++#include <linux/amlogic/aml_gpio_consumer.h>
+ #include <mach/register.h>
+ #include <mach/watchdog.h>
+ #include <mach/mod_gate.h>
+@@ -446,7 +448,7 @@ static void meson_pm_suspend(void)
+ 	}
+ 	if (power_off_flag)
+ 	{
+-		// reboot if woke up after "power off"
++        // reboot if woke up after "power off"
+ 		aml_clr_reg32_mask(P_WATCHDOG_TC,(1 << WATCHDOG_ENABLE_BIT));
+ 		aml_write_reg32(P_WATCHDOG_TC,(1<<22) | (3<<24));
+ 	}
+@@ -510,7 +512,7 @@ static int meson_pm_enter(suspend_state_
+ 
+ static void meson_pm_finish(void)
+ {
+-    printk(KERN_INFO "enter meson_pm_finish!\n");
++	printk(KERN_INFO "enter meson_pm_finish!\n");
+ }
+ 
+ static struct platform_suspend_ops meson_pm_ops = {
+@@ -547,6 +549,7 @@ static struct meson_pm_config aml_pm_pda
+ 
+ static int __init meson_pm_probe(struct platform_device *pdev)
+ {
++	int ret;
+ 	printk(KERN_INFO "enter meson_pm_probe!\n");
+ #ifdef CONFIG_HAS_EARLYSUSPEND
+ 	early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
+@@ -554,6 +557,13 @@ static int __init meson_pm_probe(struct
+ 	early_suspend.resume = meson_system_late_resume;
+ 	register_early_suspend(&early_suspend);
+ #endif
++    ret = amlogic_gpio_request_one(GPIO_TEST_N, GPIOF_OUT_INIT_LOW, "power_led"); //for power LED
++        if(ret){
++            printk("---%s----can not set output pin \n",__func__);
++            amlogic_gpio_free(GPIO_TEST_N,"power_led");
++        }else{
++            printk("---%s----set output pin success\n",__func__);
++        }
+ 	pdev->dev.platform_data=&aml_pm_pdata;
+ 	pdata = pdev->dev.platform_data;
+ 	if (!pdata) {

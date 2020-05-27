@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present AlexELEC (http://www.alexelec.in.ua)
+
+# show release information
+. /etc/os-release
+echo "boot system: $NAME-$VERSION ($ALEXELEC_ARCH)"

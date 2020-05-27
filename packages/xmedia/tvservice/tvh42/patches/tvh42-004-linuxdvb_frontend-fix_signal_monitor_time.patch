@@ -1,0 +1,28 @@
+diff -Naurp tvheadend-9b9ee68/src/input/mpegts/linuxdvb/linuxdvb_frontend.c tvheadend-9b9ee68-patch/src/input/mpegts/linuxdvb/linuxdvb_frontend.c
+--- tvheadend-9b9ee68/src/input/mpegts/linuxdvb/linuxdvb_frontend.c	2018-08-13 14:25:09.000000000 +0300
++++ tvheadend-9b9ee68-patch/src/input/mpegts/linuxdvb/linuxdvb_frontend.c	2018-08-27 11:12:59.000000000 +0300
+@@ -969,14 +969,18 @@ linuxdvb_frontend_monitor ( void *aux )
+                      lfe, ms2mono(50));
+ 
+       /* Monitor 1 per sec */
+-      if (mclk() < lfe->lfe_monitor)
+-        return;
+-      lfe->lfe_monitor = mclk() + sec2mono(1);
++      if (mclk() < lfe->lfe_monitor) {
++        lfe->lfe_monitor += sec2mono(1);
++      } else {
++        lfe->lfe_monitor = mclk() + sec2mono(1);
++      }
+     }
+   } else {
+-    if (mclk() < lfe->lfe_monitor)
+-      return;
+-    lfe->lfe_monitor = mclk() + ms2mono(period);
++    if (mclk() < lfe->lfe_monitor) {
++      lfe->lfe_monitor += ms2mono(period);
++    } else {
++      lfe->lfe_monitor = mclk() + ms2mono(period);
++    }
+   }
+ 
+ 

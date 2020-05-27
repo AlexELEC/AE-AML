@@ -1,0 +1,41 @@
+diff -Naurp aceproxy-2561431/acehttp.py aceproxy-2561431-patch/acehttp.py
+--- aceproxy-2561431/acehttp.py	2017-10-12 23:50:49.000000000 +0300
++++ aceproxy-2561431-patch/acehttp.py	2019-06-12 18:43:38.000000000 +0300
+@@ -849,32 +849,12 @@ if AceConfig.vlcuse:
+             clean_proc()
+             sys.exit(1)
+ 
+-if AceConfig.osplatform == 'Windows':
+-    name = 'ace_engine.exe'
+-else:
+-    name = 'acestreamengine'
+-ace_pid = findProcess(name)
+-AceStuff.ace = None
+-if not ace_pid:
+-    if AceConfig.acespawn:
+-        if AceConfig.osplatform == 'Windows':
+-            import _winreg
+-            import os.path
+-            AceStuff.aceProc = ""
+-        else:
+-            AceStuff.aceProc = AceConfig.acecmd.split()
+-        if spawnAce(AceStuff.aceProc, 1):
+-            # could be redefined internally
+-            if AceConfig.acespawn:
+-                logger.info("Ace Stream spawned with pid " + str(AceStuff.ace.pid))
+-else:
+-    AceStuff.ace = psutil.Process(ace_pid)
++#### AceEngine startup
++AceStuff.ace = findProcess('acestream.start')
++if AceStuff.ace:
++    AceStuff.ace = psutil.Process(AceStuff.ace)
++    logger.info('Local AceStream engine found with pid %s' % AceStuff.ace.pid)
+ 
+-if AceConfig.osplatform == 'Windows':
+-    # Wait some time because ace engine refreshes the acestream.port file only after full loading...
+-    gevent.sleep(AceConfig.acestartuptimeout)
+-    detectPort()
+-    
+ try:
+     logger.info("Using gevent %s" % gevent.__version__)
+     logger.info("Using psutil %s" % psutil.__version__)

@@ -1,0 +1,12 @@
+[Unit]
+Description=GUI switch service
+Before=kodi.service
+After=var.mount userconfig.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/gui-switch
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

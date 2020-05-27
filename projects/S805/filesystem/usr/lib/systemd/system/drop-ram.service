@@ -1,0 +1,12 @@
+[Unit]
+Description=Clear RAM service
+After=kodi.service
+ConditionPathExists=/storage/.config/ramclear.conf
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'exec /usr/bin/drop-ram.start'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=kodi.target

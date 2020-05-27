@@ -1,0 +1,382 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+ARG_LOGO="$1"
+SERVICE_DIR="/storage/.cache/services"
+M3U_DIR="/storage/ttv-m3u"
+
+NOX_M3U="$M3U_DIR/NoxLive-TTV.m3u"
+ACE_M3U="$M3U_DIR/AceLive-TTV.m3u"
+TVH_M3U="$M3U_DIR/TVH-TTV.m3u"
+TVH_LST="$M3U_DIR/TVH-TTV.list"
+ACE_PROXY_M3U="$M3U_DIR/AceProxy-TTV.m3u"
+
+NOX_DIR="/storage/.config/noxbit"
+NOX_FILE="$NOX_DIR/ttv-m3u/noxbit.m3u"
+
+ACE_DIR="/storage/.config/acestream"
+JSON_FILE_GZ="$ACE_DIR/ttv-m3u/acelive.json.gz"
+UPDATE_STATUS="$ACE_DIR/ttv-m3u/update.status"
+LOGO_LIST="$ACE_DIR/ttv-logo.list"
+FAV_LIST="$ACE_DIR/Trash-favorite.list"
+TMP_LIST="/tmp/tmp-acettv.list"
+RUN_STATUS=
+
+URL_FILE="$ACE_DIR/trash-url.conf"
+URL_TRASH="http://pomoyka.win"
+
+if [ -f "$URL_FILE" ]; then
+  . $URL_FILE
+  [ -n "$TRASH" ] && URL_TRASH=$TRASH
+fi
+
+URL_JSON="$URL_TRASH/trash/ttv-list/acelive.json"
+URL_M3U=$(echo $URL_JSON | sed 's|\.json|\/|')
+
+
+[ -f $SERVICE_DIR/acettv.conf ] && . $SERVICE_DIR/acettv.conf
+[ -f $SERVICE_DIR/acerun.conf ] && . $SERVICE_DIR/acerun.conf
+
+[ -z "$ACETTV_IP" ] && ACETTV_IP="0"
+[ -z "$CAT_ALLFON" ] && CAT_ALLFON="0"
+[ -z "$TTV_SOFT" ] && TTV_SOFT="AceStream"
+[ -z "$TRANSLATE" ] && TRANSLATE="Trash-TTV"
+
+# clean Nox categories
+del_cat () {
+  CAT=$1
+  cat $NOX_FILE | sed -n "p; /$CAT/n" | sed "/$CAT/d" > $NOX_M3U
+  cp -f $NOX_M3U $NOX_FILE
+}
+
+# AceStream create M3U
+build_m3u()
+{
+INFILE=$1
+cat $INFILE |  
+  while read -r LINE ; do
+      CH_CAT=`echo $LINE | awk -F\\# '{print $1}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_NAME=`echo $LINE | awk -F\\# '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_PATH=`echo $LINE | awk -F\\# '{print $3}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_LOGO=`grep -m 1 "^$CH_NAME #" $LOGO_LIST | awk -F\\# '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+
+      echo "#EXTINF:-1 group-title=\"$CH_CAT\" tvg-logo=\"$CH_LOGO\",$CH_NAME" >> $INFILE.ace
+      echo "http://${URL_IP}:6878/ace/getstream?url=${URL_M3U}${CH_PATH}&.mp4" >> $INFILE.ace
+
+      echo "#EXTINF:-1 group-title=\"$CH_CAT\" tvg-logo=\"$CH_LOGO\",$CH_NAME" >> $INFILE.tvh
+      echo "pipe://ttvstream $CH_NAME" >> $INFILE.tvh
+      echo "$CH_NAME # http://${URL_IP}:6878/ace/getstream?url=${URL_M3U}${CH_PATH}&.mp4" >> $INFILE.lst
+  done
+  rm -f $INFILE
+}
+
+# AceStream start
+ace_run () {
+  STAT_OLD=
+  mkdir -p $ACE_DIR/ttv-m3u
+
+  if [ -f "$JSON_FILE_GZ" ]; then
+    STAT_OLD=`stat $JSON_FILE_GZ | grep 'Modify:'`
+  fi
+
+  curl -s -k --connect-timeout 5 --max-time 20 -R -z "$JSON_FILE_GZ" -o "$JSON_FILE_GZ" -H "Accept-Encoding: gzip" "$URL_JSON"
+
+  if [ ! -f "$JSON_FILE_GZ" ]; then
+    if [ "$1" == "next" ]; then
+      RUN_STATUS="AceStream: Could not load json-file."
+      return
+    else
+      echo "AceStream: Could not load json-file."
+      exit
+    fi
+  fi
+
+  # get xmltv EPG
+  [ -f "$ACE_DIR/ttv-xmltv-epg.conf" ] && . $ACE_DIR/ttv-xmltv-epg.conf
+  [ -x /usr/bin/ttv-xmltv -a "$ENABLE_EPG" == "yes" ] && /usr/bin/ttv-xmltv > /dev/null 2>&1
+
+  STAT_NEW=`stat $JSON_FILE_GZ | grep 'Modify:'`
+  if [ "$STAT_OLD" == "$STAT_NEW" ]; then
+    if [ -f "$ACE_M3U" -a -f "$UPDATE_STATUS" ]; then
+      if [ "$1" == "next" ]; then
+        RUN_STATUS="AceStream: You already actual playlist."
+        return
+      else
+        echo "AceStream: You already actual playlist."
+        exit
+      fi
+    fi
+  fi
+
+  case "$TRANSLATE" in
+    Trash-TTV)
+      /usr/bin/zcat $JSON_FILE_GZ | /usr/bin/jq -r '.|= sort_by(.cat,.name)|.[]|select(.source=="ttv.json")|select(.name!=null)|select(.cat!=null) | .cat + " # " + .name + " # " + .fname' > $TMP_LIST
+    ;;
+    Trash-Ace)
+      /usr/bin/zcat $JSON_FILE_GZ | /usr/bin/jq -r '.|= sort_by(.cat,.name)|.[]|select(.source=="as.json")|select(.provkey=="ace")|select(.name!=null)|select(.cat!=null) | .cat + " # " + .name + " # " + .fname' > $TMP_LIST
+    ;;
+    Trash-All)
+      /usr/bin/zcat $JSON_FILE_GZ | /usr/bin/jq -r '.|= sort_by(.cat,.name)|.[]|select(.source=="ttv.json")|select(.name!=null)|select(.cat!=null) | .cat + " # " + .name + " # " + .fname' > $TMP_LIST
+      /usr/bin/zcat $JSON_FILE_GZ | /usr/bin/jq -r '.|= sort_by(.cat,.name)|.[]|select(.source=="as.json")|select(.provkey=="ace")|select(.name!=null)|select(.cat!=null) | .cat + " # " + .name + " # " + .fname' >> $TMP_LIST
+    ;;
+  esac
+
+  # del categories
+  [ "$CAT_COMM" == 0 ] && sed '/^Общие/d' -i $TMP_LIST
+  [ "$CAT_RELIGION" == 0 ] && sed '/^Религиозные/d' -i $TMP_LIST
+  [ "$CAT_MAN" == 0 ] && sed '/^Мужские/d' -i $TMP_LIST
+
+  if [ "$CAT_LEARN" == 0 ]; then
+    sed '/^educational/d' -i $TMP_LIST
+    sed '/^Познавательные/d' -i $TMP_LIST
+  fi
+
+  if [ "$CAT_SHOW" == 0 ]; then
+    sed '/^entertaining/d' -i $TMP_LIST
+    sed '/^Развлекательные/d' -i $TMP_LIST
+  fi
+
+  if [ "$CAT_EROS" == 0 ]; then
+    sed '/^erotic_18_plus/d' -i $TMP_LIST
+    sed '/^Эротика/d' -i $TMP_LIST
+  fi
+
+  if [ "$CAT_NEWS" == 0 ]; then
+    sed '/^informational/d' -i $TMP_LIST
+    sed '/^Новостные/d' -i $TMP_LIST
+  fi
+
+  if [ "$CAT_CHILDREN" == 0 ]; then
+    sed '/^kids/d' -i $TMP_LIST
+    sed '/^Детские/d' -i $TMP_LIST
+  fi
+
+  if [ "$CAT_FILMS" == 0 ]; then
+    sed '/^movies/d' -i $TMP_LIST
+    sed '/^series/d' -i $TMP_LIST
+    sed '/^Фильмы/d' -i $TMP_LIST
+  fi
+
+  if [ "$CAT_MUSIC" == 0 ]; then
+    sed '/^music/d' -i $TMP_LIST
+    sed '/^Музыка/d' -i $TMP_LIST
+  fi
+
+  if [ "$CAT_REGION" == 0 ]; then
+    sed '/^regional/d' -i $TMP_LIST
+    sed '/^Региональные/d' -i $TMP_LIST
+  fi
+
+  if [ "$CAT_SPORT" == 0 ]; then
+    sed '/^sport/d' -i $TMP_LIST
+    sed '/^Спорт/d' -i $TMP_LIST
+  fi
+
+  if [ "$CAT_ALLFON" == 1 ]; then
+    /usr/bin/zcat $JSON_FILE_GZ | /usr/bin/jq -r '.|= sort_by(.cat,.name)|.[]|select(.source=="allfon.json")|select(.name!=null)|select(.cat!=null) | .cat + " # " + .name + " # " + .fname + " # " + .cid' >> $TMP_LIST
+  fi
+  sed '/^$/d' -i $TMP_LIST
+
+  # favorite channel start
+  if [ ! -f "${FAV_LIST}.sample" ]; then
+    cat $TMP_LIST | awk -F\# '{print $1,"#",$2}' | sed 's/[ \t]*$//g' > ${FAV_LIST}.sample
+  fi
+
+  if [ -f "$FAV_LIST" ]; then
+    rm -f ${TMP_LIST}.fav
+    cp -f $FAV_LIST /tmp/tmp-fav.list
+    cat /tmp/tmp-fav.list |  
+      while read -r LINE ; do
+        CH_FAV=`echo $LINE | awk -F\# '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+        CH_STRING=`grep -m 1 "# $CH_FAV #" $TMP_LIST`
+        [ -n "$CH_STRING" ] && echo "$CH_STRING" >> ${TMP_LIST}.fav
+      done
+    [ -f "${TMP_LIST}.fav" ] && mv -f ${TMP_LIST}.fav $TMP_LIST
+    rm -f /tmp/tmp-fav.list
+  fi
+  # favorite channel end
+
+  PART_DIR="/tmp/ttv-get"
+  mkdir -p $PART_DIR
+  COUNT_LINES=`wc -l $TMP_LIST | awk '{print $1}'`
+
+  if [ $COUNT_LINES -gt 200 ]; then
+    sed -n '1,100p' $TMP_LIST > $PART_DIR/ttv.part1
+    sed -n '101,200p' $TMP_LIST > $PART_DIR/ttv.part2
+    sed -e '1,200d' -i $TMP_LIST
+    COUNT_LINES=`wc -l $TMP_LIST | awk '{print $1}'`
+    if [ $COUNT_LINES -gt 200 ]; then
+      sed -n '1,100p' $TMP_LIST > $PART_DIR/ttv.part3
+      sed -n '101,200p' $TMP_LIST > $PART_DIR/ttv.part4
+      sed -e '1,200d' -i $TMP_LIST
+      COUNT_LINES=`wc -l $TMP_LIST | awk '{print $1}'`
+      if [ $COUNT_LINES -gt 200 ]; then
+        sed -n '1,100p' $TMP_LIST > $PART_DIR/ttv.part5
+        sed -n '101,200p' $TMP_LIST > $PART_DIR/ttv.part6
+        sed -e '1,200d' -i $TMP_LIST
+        COUNT_LINES=`wc -l $TMP_LIST | awk '{print $1}'`
+        if [ $COUNT_LINES -gt 200 ]; then
+          sed -n '1,100p' $TMP_LIST > $PART_DIR/ttv.part7
+          sed -n '101,$p' $TMP_LIST > $PART_DIR/ttv.part8
+        else
+          cp -f $TMP_LIST $PART_DIR/ttv.part7
+        fi
+      else
+        cp -f $TMP_LIST $PART_DIR/ttv.part5
+      fi
+    else
+      cp -f $TMP_LIST $PART_DIR/ttv.part3
+    fi
+  else
+    if [ $COUNT_LINES -gt 100 ]; then
+      sed -n '1,50p' $TMP_LIST > $PART_DIR/ttv.part1
+      sed -n '51,$p' $TMP_LIST > $PART_DIR/ttv.part2
+    else
+      cp -f $TMP_LIST $PART_DIR/ttv.part1
+    fi
+  fi
+
+  rm -f $TMP_LIST
+
+  # get channel logos
+  [ -x /usr/bin/ttv-logo -a "$ARG_LOGO" != "nologo" ] && /usr/bin/ttv-logo > /dev/null 2>&1
+
+  for fpart in $(ls $PART_DIR); do
+    build_m3u "$PART_DIR/$fpart" &
+  done
+
+  patern='ttv.part[1-9]'
+  while true; do
+    usleep 250
+    [ $(ls /tmp/ttv-get/$patern 2>/dev/null | wc -l) -lt 1 ] && break
+  done
+
+  PART_ACE=`ls $PART_DIR/*.ace 2>/dev/null`
+  if [ "$PART_ACE" != "" ]; then
+      echo '#EXTM3U' > $ACE_M3U
+      cat $PART_ACE >> $ACE_M3U
+
+      # AceProxy playlist
+      if [ -f "$SERVICE_DIR/aceproxy.conf" ]; then
+          cp -f $ACE_M3U $ACE_PROXY_M3U
+          sed 's|:6878/ace/getstream?url=|:8000/url/|g; s|&.mp4$|/stream.mp4|g' -i $ACE_PROXY_M3U
+      fi
+
+      # Add External playlist
+      if [ -f "$M3U_DIR/add_playlist.m3u" ]; then
+          cat $M3U_DIR/add_playlist.m3u >> $ACE_M3U
+          cat $M3U_DIR/add_playlist.m3u >> $ACE_PROXY_M3U
+      fi
+  else
+      echo "Error create Ace playlist files!"
+  fi
+
+  PART_TVH=`ls $PART_DIR/*.tvh 2>/dev/null`
+  if [ "$PART_TVH" != "" ]; then
+      echo '#EXTM3U' > $TVH_M3U
+      cat $PART_TVH >> $TVH_M3U
+
+      PART_LST=`ls $PART_DIR/*.lst 2>/dev/null`
+      rm -f $TVH_LST
+      [ "$PART_LST" != "" ] && cat $PART_LST >> $TVH_LST || echo "Error create TVH URLs list!"
+  else
+      echo "Error create TVH playlist files!"
+  fi
+
+  rm -fr $PART_DIR
+  echo "TTV $STAT_NEW" > $UPDATE_STATUS
+  [ "$1" == "next" ] && RUN_STATUS="Done! Playlist created."
+}
+
+# Noxbit start
+nox_run () {
+  [ -f $NOX_DIR/playlist.conf ] && . $NOX_DIR/playlist.conf
+
+  if [ -z "$NOX_LIST_URL" ]; then
+    if [ -n "$RUN_STATUS" ]; then
+      echo "$RUN_STATUS"
+    else
+      echo "Noxbit: Unknown playlist address."
+    fi
+    exit
+  fi
+
+  mkdir -p $NOX_DIR/ttv-m3u
+  rm -rf $NOX_DIR/ttv-m3u/*
+
+  curl -s --connect-timeout 5 --max-time 20 -o "$NOX_FILE" "$NOX_LIST_URL"
+
+  if [ ! -f "$NOX_FILE" ]; then
+    if [ -n "$RUN_STATUS" ]; then
+      echo "$RUN_STATUS"
+    else
+      echo "Noxbit: Could not load playlist."
+    fi
+    exit
+  fi
+
+  cp -f $NOX_FILE $NOX_M3U
+
+  [ "$CAT_SHOW" == 0 ] && del_cat "Развлекательные"
+  [ "$CAT_COMM" == 0 ] && del_cat "Общие"
+  [ "$CAT_FILMS" == 0 ] && del_cat "Фильмы"
+  [ "$CAT_EROS" == 0 ] && del_cat "Эротика"
+  [ "$CAT_NEWS" == 0 ] && del_cat "Новостные"
+  [ "$CAT_REGION" == 0 ] && del_cat "Региональные"
+  [ "$CAT_MUSIC" == 0 ] && del_cat "Музыка"
+  [ "$CAT_CHILDREN" == 0 ] && del_cat "Детские"
+  [ "$CAT_SPORT" == 0 ] && del_cat "Спорт"
+  [ "$CAT_RELIGION" == 0 ] && del_cat "Религиозные"
+  [ "$CAT_MAN" == 0 ] && del_cat "Мужские"
+  [ "$CAT_LEARN" == 0 ] && del_cat "Познавательные"
+
+  sed 's/(на модерации)//; s/[ \t]*$//' -i $NOX_M3U
+  [ "$ACETTV_IP" == "1" ] && sed "s|127\.0\.0\.1|$URL_IP|g" -i $NOX_M3U
+  [ -f "$M3U_DIR/add_playlist.m3u" ] && cat $M3U_DIR/add_playlist.m3u >> $NOX_M3U
+}
+
+#========= Main =========
+mkdir -p $M3U_DIR
+
+if [ "$ACETTV_IP" == "0" ]; then
+  URL_IP="127.0.0.1"
+else
+  URL_IP=`ifconfig eth0 | awk '/inet addr:/ {print $2}' | sed 's/addr://'`
+  if [ -z $URL_IP ]; then
+    URL_IP=`ifconfig wlan0 | awk '/inet addr:/ {print $2}' | sed 's/addr://'`
+    [ -z $URL_IP ] && URL_IP="127.0.0.1"
+  fi
+fi
+
+case "$TTV_SOFT" in
+  AceStream)
+    if [ "$TRANSLATE" == "Site-TTV" ]; then
+      ret_msg=`/usr/bin/ttvget-direct`
+      echo "$ret_msg"
+      exit
+    elif [ "$TRANSLATE" == "Search-Ace" ]; then
+      ret_msg=`/usr/bin/ace-search`
+      echo "$ret_msg"
+      exit
+    else
+      ace_run
+    fi
+    ;;
+  Noxbit)
+    nox_run
+    ;;
+  *)
+    if [ "$TRANSLATE" == "Site-TTV" ]; then
+      ret_msg=`/usr/bin/ttvget-direct`
+      RUN_STATUS="$ret_msg"
+    else
+      ace_run next
+    fi
+    nox_run
+    ;;
+esac
+
+echo "Done! Playlist created."
+exit

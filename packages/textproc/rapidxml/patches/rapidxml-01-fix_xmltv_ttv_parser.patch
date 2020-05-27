@@ -1,0 +1,26 @@
+diff -Naurp rapidxml-1.13/rapidxml/rapidxml.hpp rapidxml-1.13-patch/rapidxml/rapidxml.hpp
+--- rapidxml-1.13/rapidxml/rapidxml.hpp	2009-05-13 01:46:18.000000000 +0300
++++ rapidxml-1.13-patch/rapidxml/rapidxml.hpp	2018-10-24 10:21:51.000000000 +0300
+@@ -1597,6 +1597,22 @@ namespace rapidxml
+ 
+                         // &amp; &apos;
+                         case Ch('a'): 
++                            // fix &amp;quot;
++                            if (src[2] == Ch('m') && src[3] == Ch('p') && src[4] == Ch(';') && src[5] == Ch('q') && src[6] == Ch('u') && src[7] == Ch('o') && src[8] == Ch('t') && src[9] == Ch(';'))
++                            {
++                                *dest = Ch('"');
++                                ++dest;
++                                src += 10;
++                                continue;
++                            }
++                            // fix &amp;apos;
++                            if (src[2] == Ch('m') && src[3] == Ch('p') && src[4] == Ch(';') && src[5] == Ch('a') && src[6] == Ch('p') && src[7] == Ch('o') && src[8] == Ch('s') && src[9] == Ch(';'))
++                            {
++                                *dest = Ch('\'');
++                                ++dest;
++                                src += 10;
++                                continue;
++                            }
+                             if (src[2] == Ch('m') && src[3] == Ch('p') && src[4] == Ch(';'))
+                             {
+                                 *dest = Ch('&');

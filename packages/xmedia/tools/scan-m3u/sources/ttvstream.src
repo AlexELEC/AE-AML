@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+CH_NAME="$@"
+CH_FILE="/storage/ttv-m3u/TVH-TTV.list"
+[ $(basename "$0") = "ttvstream-direct" ] && CH_FILE="/storage/ttv-m3u/SITE-TVH-TTV.list"
+URL=`grep -m 1 "^$CH_NAME #" $CH_FILE | awk -F\\# '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+LOG_LEVEL="quiet"
+OPT_FFMPEG="-map 0"
+
+ACE_DIR="/storage/.config/acestream"
+CONFIG_FILE="$ACE_DIR/stream-tvh.conf"
+FFMPEG_CH_FILE="$ACE_DIR/stream-tvh-channels.conf"
+
+[ -f "$CONFIG_FILE" ] && . $CONFIG_FILE
+
+if [ -f "$FFMPEG_CH_FILE" ]; then
+  OPT_RESULT=`grep -m 1 "^$CH_NAME #" $FFMPEG_CH_FILE | awk -F\\# '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+  [ -n "$OPT_RESULT" ] && OPT_FFMPEG=$OPT_RESULT
+fi
+
+echo "*** Start TTV stream: [$CH_NAME] - [$URL] ***" >&2
+[ "$CH_INFO" == "yes" ] && /usr/bin/ffmpeg -i "$URL" >&2
+
+/usr/bin/ffmpeg -v $LOG_LEVEL -i "$URL" -c copy $OPT_FFMPEG -f mpegts pipe:1

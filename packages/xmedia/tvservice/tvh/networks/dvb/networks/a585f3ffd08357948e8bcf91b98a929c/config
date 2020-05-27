@@ -1,0 +1,17 @@
+{
+	"orbital_pos": "5E",
+	"enabled": false,
+	"networkname": "Sirius",
+	"nid": 0,
+	"autodiscovery": 0,
+	"bouquet": false,
+	"skipinitscan": true,
+	"idlescan": false,
+	"sid_chnum": false,
+	"ignore_chnum": true,
+	"satip_source": 0,
+	"charset": "AUTO",
+	"localtime": 0,
+	"wizard": false,
+	"class": "dvb_network_dvbs"
+}

@@ -1,0 +1,47 @@
+diff -Naurp linux-fb5b898/arch/arm/boot/dts/amlogic/meson8b_m201_vander.dtd linux-fb5b898-patch/arch/arm/boot/dts/amlogic/meson8b_m201_vander.dtd
+--- linux-fb5b898/arch/arm/boot/dts/amlogic/meson8b_m201_vander.dtd	2016-12-23 13:20:30.000000000 +0200
++++ linux-fb5b898-patch/arch/arm/boot/dts/amlogic/meson8b_m201_vander.dtd	2016-12-23 13:31:35.000000000 +0200
+@@ -653,29 +653,23 @@
+ 		compatible = "amlogic,amhdmitx";
+ 		dev_name = "amhdmitx";
+ 		status = "ok";
+-		vend-data = <0x2a>;
+-		pwr-ctrl = <0x2b>;
++		vend-data = <&vend_data>;
++		pwr-ctrl = <&pwr_ctrl>;
+ 
+-		vend_data {
+-			vendor_name = "Amlogic";
+-			vendor_id = <0x0>;
+-			product_desc = "M8 MBox SKTv1";
+-			cec_osd_string = "MBox";
+-			cec_config = <0xf>;
+-			ao_cec = <0x1>;
+-			linux,phandle = <0x2a>;
+-			phandle = <0x2a>;
++		vend_data: vend_data{
++			vendor_name = "AlexELEC";
++			vendor_id = <0x000000>;
++			product_desc = "AlexELEC Box";
++			cec_osd_string = "AlexELEC Box";
+ 		};
+ 
+-		pwr_ctrl {
+-			pwr_5v_on = [00];
+-			pwr_5v_off = [00];
+-			pwr_3v3_on = [00];
+-			pwr_3v3_off = [00];
+-			pwr_hpll_vdd_on = [00];
+-			pwr_hpll_vdd_off = [00];
+-			linux,phandle = <0x2b>;
+-			phandle = <0x2b>;
++		 pwr_ctrl: pwr_ctrl{
++			pwr_5v_on = "";
++			pwr_5v_off = "";
++			pwr_3v3_on = "";
++			pwr_3v3_off = "";
++			pwr_hpll_vdd_on = "";
++			pwr_hpll_vdd_off = "";
+ 		};
+ 	};
+ 

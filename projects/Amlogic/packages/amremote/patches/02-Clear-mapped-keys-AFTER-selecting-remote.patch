@@ -1,0 +1,31 @@
+From 05b85d1f9821ae65dca250ba87b369327dd71df3 Mon Sep 17 00:00:00 2001
+From: Portisch <hugo.portisch@yahoo.de>
+Date: Tue, 21 May 2019 06:00:13 +0000
+Subject: [PATCH] Clear the mapped keys AFTER selecting the remote by
+ factory_infcode
+
+---
+ irremote.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/irremote.c b/irremote.c
+index 89290a8..322b757 100644
+--- a/irremote.c
++++ b/irremote.c
+@@ -188,8 +188,6 @@ int main(int argc, char* argv[])
+         fclose(fp);
+         }
+ 
+-    ioctl(device_fd, REMOTE_IOC_RESET_KEY_MAPPING, NULL);
+-
+     for (j = 0; j < CUSTOM_REMOTE_MAX; j++)
+     {
+         remote_config_t *custom_remote = remotes[j];
+@@ -198,6 +196,7 @@ int main(int argc, char* argv[])
+ 
+         custom_remote->factory_code >>= 16;
+         set_config(custom_remote, device_fd);
++        ioctl(device_fd, REMOTE_IOC_RESET_KEY_MAPPING, NULL);
+ 
+         for (i = 0; i < 256; i++)
+             if (custom_remote->key_map[i] != KEY_RESERVED) {

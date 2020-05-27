@@ -1,0 +1,16 @@
+[Unit]
+Description=actkbd keyboard shortcut daemon
+After=network-online.target graphical.target
+Wants=network-online.target
+ConditionPathExists=/storage/.config/actkbd/actkbd.conf
+
+[Service]
+ExecStart=/usr/sbin/actkbd -x -l -d /dev/input/by-path/platform-gpio_keypad.47-event
+KillMode=process
+TimeoutStopSec=2
+Restart=on-failure
+RestartSec=2
+StartLimitInterval=0
+
+[Install]
+WantedBy=kodi.target

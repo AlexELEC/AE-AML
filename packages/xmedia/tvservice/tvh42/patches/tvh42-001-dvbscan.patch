@@ -1,0 +1,12 @@
+diff -Naurp hts-tvheadend-26ccee6/src/input/mpegts/scanfile.c hts-tvheadend-26ccee6-patch/src/input/mpegts/scanfile.c
+--- hts-tvheadend-26ccee6/src/input/mpegts/scanfile.c	2014-10-17 08:52:58.000000000 +0300
++++ hts-tvheadend-26ccee6-patch/src/input/mpegts/scanfile.c	2014-10-20 08:16:04.000000000 +0300
+@@ -684,7 +684,7 @@ scanfile_init ( void )
+ #elif defined(PLATFORM_FREEBSD)
+     path = "/usr/local/share/dtv-scan-tables";
+ #else
+-    path = "/usr/share/dvb";
++    path = "/storage/.config/tvheadend/dvb-scan";
+ #endif
+   scanfile_load_dir(path, NULL, 0);
+ }

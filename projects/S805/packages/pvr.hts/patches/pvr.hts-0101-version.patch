@@ -1,0 +1,14 @@
+diff -Naurp pvr.hts-f569808/pvr.hts/addon.xml.in pvr.hts-f569808-patch/pvr.hts/addon.xml.in
+--- pvr.hts-f569808/pvr.hts/addon.xml.in	2018-06-09 12:11:10.000000000 +0300
++++ pvr.hts-f569808-patch/pvr.hts/addon.xml.in	2018-06-27 09:06:32.000000000 +0300
+@@ -1,8 +1,8 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <addon
+   id="pvr.hts"
+-  version="4.4.18"
+-  name="Tvheadend HTSP Client"
++  version="5.4.18"
++  name="Tvheadend HTSP Client AE"
+   provider-name="Adam Sutton, Sam Stenvall, Lars Op den Kamp, Kai Sommerfeld">
+   <requires>@ADDON_DEPENDS@</requires>
+   <extension

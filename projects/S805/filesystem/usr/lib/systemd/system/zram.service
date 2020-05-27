@@ -1,0 +1,9 @@
+[Unit]
+Description=ZRAM service
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c 'exec /usr/bin/zram.start'
+
+[Install]
+WantedBy=swap.service

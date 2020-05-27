@@ -1,0 +1,75 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2009-2014 Stephan Raue (stephan@openelec.tv)
+# Copyright (C) 2018-present Team LibreELEC (https://libreelec.tv)
+# Copyright (C) 2011-present AlexELEC (http://alexelec.in.ua)
+
+KODI_ROOT=$HOME/.kodi
+
+BOOT_STATE="$(cat $HOME/.config/boot.status 2>/dev/null)"
+
+# hack: make addon-bins executable
+# done in kodi on addon install. but just in case..
+chmod +x $KODI_ROOT/addons/*/bin/* 2>/dev/null
+
+# setup Kodi sources
+if [ ! -f $KODI_ROOT/userdata/sources.xml ]; then
+  if [ -f /usr/share/kodi/config/sources.xml ]; then
+    cp /usr/share/kodi/config/sources.xml $KODI_ROOT/userdata
+  fi
+fi
+
+# common setup guisettings
+if [ ! -f $KODI_ROOT/userdata/guisettings.xml ] ; then
+  if [ -f /usr/share/kodi/config/guisettings.xml ]; then
+    cp /usr/share/kodi/config/guisettings.xml $KODI_ROOT/userdata
+  fi
+  if [ "$BOOT_STATE" = "SAFE" ]; then
+    [ ! -f $KODI_ROOT/userdata/guisettings.xml ] && echo '<settings version="2"></settings>' > $KODI_ROOT/userdata/guisettings.xml
+    xmlstarlet ed --omit-decl --inplace -s settings -t elem -n setting -v "maroon" -i settings/setting -t attr -n id -v lookandfeel.skincolors $KODI_ROOT/userdata/guisettings.xml
+  fi
+fi
+
+# add default addons settings
+if [ ! -d $HOME/.kodi/userdata/addon_data/weather.gismeteo ]; then
+  if [ -d /usr/share/kodi/config/weather.gismeteo ]; then
+    mkdir -p $HOME/.kodi/userdata/addon_data
+    cp -R /usr/share/kodi/config/weather.gismeteo $HOME/.kodi/userdata/addon_data
+  fi
+fi
+
+if [ ! -d $HOME/.kodi/userdata/addon_data/script.skinshortcuts ]; then
+  if [ -d /usr/share/kodi/config/script.skinshortcuts ]; then
+    mkdir -p $HOME/.kodi/userdata/addon_data
+    cp -R /usr/share/kodi/config/script.skinshortcuts $HOME/.kodi/userdata/addon_data
+  fi
+fi
+
+if [ ! -d $HOME/.kodi/userdata/addon_data/skin.aeon.nox.silvo.ae ]; then
+  if [ -d /usr/share/kodi/config/skin.aeon.nox.silvo.ae ]; then
+    mkdir -p $HOME/.kodi/userdata/addon_data
+    cp -R /usr/share/kodi/config/skin.aeon.nox.silvo.ae $HOME/.kodi/userdata/addon_data
+  fi
+fi
+
+if [ ! -d $HOME/.kodi/userdata/addon_data/skin.arctic.zephyr.ae ]; then
+  if [ -d /usr/share/kodi/config/skin.arctic.zephyr.ae ]; then
+    mkdir -p $HOME/.kodi/userdata/addon_data
+    cp -R /usr/share/kodi/config/skin.arctic.zephyr.ae $HOME/.kodi/userdata/addon_data
+  fi
+fi
+
+cat /proc/cmdline | grep 'BOOT_IMAGE=/dev/boot' > /dev/null
+if [ $? == 0 ]; then
+  touch /var/lock/nand.lock
+else
+  rm -f /var/lock/nand.lock
+fi
+
+# arm
+echo "MALLOC_MMAP_THRESHOLD_=8192" > /run/libreelec/kodi.conf
+
+[ -f /storage/.config/kodi.conf ] && cat /storage/.config/kodi.conf >> /run/libreelec/kodi.conf
+
+exit 0

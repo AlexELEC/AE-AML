@@ -1,0 +1,16 @@
+[Unit]
+Description=TorrServer Daemon
+Requires=network-online.target
+After=network-online.target
+Before=kodi.service
+ConditionPathExists=/storage/.cache/services/torrserver.conf
+
+[Service]
+ExecStart=/bin/sh -c 'exec /usr/bin/torrserver.start'
+TimeoutStopSec=1
+Restart=always
+RestartSec=2
+StartLimitInterval=0
+
+[Install]
+WantedBy=multi-user.target

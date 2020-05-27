@@ -1,0 +1,17 @@
+[Unit]
+Description=Tvheadend Service
+After=network-online.target oscam.service acestream.service
+Before=kodi.service
+Wants=oscam.service acestream.service
+ConditionPathExists=/storage/.cache/services/tvheadend.conf
+
+[Service]
+ExecStart=/bin/sh -c "exec sh /usr/bin/tvheadend.start"
+ExecStopPost=-/usr/bin/tvh-antoff
+TimeoutStopSec=3
+Restart=always
+RestartSec=2
+StartLimitInterval=0
+
+[Install]
+WantedBy=kodi.target

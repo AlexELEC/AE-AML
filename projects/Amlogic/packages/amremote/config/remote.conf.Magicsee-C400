@@ -1,0 +1,69 @@
+# Amlogic NEC remote Magicsee 400
+
+factory_code	= 0xfe010001
+work_mode		= 0
+repeat_enable	= 1
+repeat_delay	= 40
+repeat_peroid	= 39
+release_delay	= 121
+debug_enable	= 0
+
+key_begin
+		0xdc  31     #power
+		0x9c  113    #mute
+		0x95  172    #home
+		0xc5  24     #mouse (osd info)
+
+		0x96  18     #epg
+		0xc2  18     #text
+		0x84  30     #audio
+		0xc3  20     #subtitle
+
+		0xd6  46     #menu
+		0xd0  1      #exit
+
+		0xca  103    #up
+		0x99  105    #left
+		0xce  28
+		0xc1  106    #right
+		0xd2  108    #down
+
+		0x88  51     #page+ (prev)
+		0x80  52     #page- (next)
+
+		0x92  2      #1
+		0x93  3      #2
+		0xcc  4      #3
+		0xa1  115    #vol+
+
+		0x8e  5      #4
+		0x8f  6      #5
+		0xc8  7      #6
+		0xb8  114    #vol-
+
+		0x8a  8      #7
+		0x8b  9      #8
+		0xc4  10     #9
+		0x87  11     #0
+
+		0xc6  19     #fr
+		0xd5  33     #ff
+		0x86  64     #rec
+		0x90  44     #switch (zoom)
+
+		0x8c  109    #page+
+		0xdd  104    #page-
+
+		0xd8  57     #play/pause
+		0xd4  45     #stop
+		0xd1  57     #shift ()
+		0xc7  23     #info
+
+		0x89  59     #red
+		0xda  60     #green
+		0x9a  61     #yellow
+		0xcd  62     #blue
+
+		0xd9 15      #display (tab)
+		0x82 14      #del
+key_end

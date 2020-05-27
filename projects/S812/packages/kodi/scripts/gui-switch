@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+LOCK_DIR="/var/lock"
+SHELL_FILE="/storage/.config/shell.conf"
+
+if [ -f "$SHELL_FILE" ]; then
+  . $SHELL_FILE
+  if [ "$SHELL" == "TVIP" ]; then
+      touch $LOCK_DIR/start.tvip
+  else
+      touch $LOCK_DIR/start.kodi
+  fi
+else
+  touch $LOCK_DIR/start.kodi
+fi

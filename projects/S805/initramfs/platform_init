@@ -1,0 +1,91 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+display_mode=$(cat /sys/class/display/mode)
+
+# Parse command line arguments
+for arg in $(cat /proc/cmdline); do
+  case ${arg} in
+    hdmitx=*)
+      hdmitx=${arg#*=}
+      ;;
+    hdmimode=*)
+      hdmimode=${arg#*=}
+      ;;
+    bootfrom*)
+      bootfromext=1
+      ;;
+    BOOT_IMAGE=*)
+      BOOT_IMAGE=${arg#*=}
+      ;;
+    boot=*)
+      boot=${arg#*=}
+      ;;
+    disk=*)
+      disk=${arg#*=}
+      ;;
+  esac
+done
+
+# Add information where to run AlexELEC from
+if [ -z "$BOOT_IMAGE" -o -z "$boot" -o -z "$disk" ]; then
+  cmdline=$(cat /proc/cmdline)
+  if [ -n "$bootfromext" ]; then
+    cmdline="$cmdline BOOT_IMAGE=kernel.img boot=LABEL=@BOOT_LABEL@ disk=LABEL=@DISK_LABEL@"
+  else
+    cmdline="$cmdline BOOT_IMAGE=/dev/boot boot=/dev/system disk=/dev/data"
+  fi
+  echo "$cmdline" > /proc/cmdline
+fi
+
+# Enable HDMI output if cable is connected and not already enabled by u-boot
+[ -z "$hdmimode" ] && hdmimode="1080p50hz"
+if [ "$(cat /sys/class/amhdmitx/amhdmitx0/hpd_state)" != "0" ] && [ "$display_mode" != "$hdmimode" ]; then
+  echo "$hdmimode" > /sys/class/display/mode
+  display_mode="$hdmimode"
+fi
+
+# Force enable CEC if configuration parameter not present or empty
+if [ -z "$hdmitx" ]; then
+  echo 0xf > /sys/class/amhdmitx/amhdmitx0/cec_config
+fi
+
+# Enable framebuffer device
+echo 0 > /sys/class/graphics/fb0/blank
+
+# Blank fb1 to prevent static noise
+echo 1 > /sys/class/graphics/fb1/blank
+
+# Disable framebuffer scaling
+echo 0 > /sys/class/graphics/fb0/free_scale
+echo 0 > /sys/class/graphics/fb1/free_scale
+
+# set initial video state
+echo 1 > /sys/class/video/disable_video
+
+# Set framebuffer geometry to match the resolution
+case $display_mode in
+  480*)            X=720  Y=480  ;;
+  576*)            X=720  Y=576  ;;
+  720p*)           X=1280 Y=720  ;;
+  *)               X=1920 Y=1080 ;;
+esac
+
+fbset -fb /dev/fb0 -g $X $Y 1920 2160 32
+fbset -fb /dev/fb1 -g 32 32 32 32 32
+
+# Include deinterlacer into default VFM map
+echo rm default > /sys/class/vfm/map
+echo add default decoder ppmgr deinterlace amvideo > /sys/class/vfm/map
+
+for part in /sys/block/*/queue/add_random; do
+  echo 0 > "$part"
+done
+
+# Network Tweaks
+echo 32768 > /proc/sys/net/core/rps_sock_flow_entries
+echo 2048 > /sys/class/net/eth0/queues/rx-0/rps_flow_cnt
+echo 7 > /sys/class/net/eth0/queues/rx-0/rps_cpus
+echo 7 > /sys/class/net/eth0/queues/tx-0/xps_cpus

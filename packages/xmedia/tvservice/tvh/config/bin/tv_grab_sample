@@ -1,0 +1,71 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+
+### XMLTV_TYPE values: FILE|SCRIPT|WEB ###
+
+XMLTV_TYPE="WEB"
+
+### XMLTV_LOCATION_FILE value: /storage/.config/tvheadend/xmltv.xml.gz
+
+XMLTV_LOCATION_FILE=
+
+### XMLTV_LOCATION_WEB value: https://download2.teleguide.info/download/new3/xmltv.xml"
+
+XMLTV_LOCATION_WEB=
+
+### XMLTV_LOCATION_SCRIPT value: /storage/.config/tvheadend/script.sh
+XMLTV_LOCATION_SCRIPT=
+
+################################### --MAIN-- #####################################
+
+if [ $# -lt 1 ]; then
+  . /etc/profile
+
+  if [ "$XMLTV_TYPE" = "FILE" ]; then
+    case "$XMLTV_LOCATION_FILE" in
+    *.gz | *.bz2 | *.xz)
+        zcat "$XMLTV_LOCATION_FILE"
+        ;;
+    *)
+        cat "$XMLTV_LOCATION_FILE"
+        ;;
+    esac
+    exit 0
+  elif [ "$XMLTV_TYPE" = "SCRIPT" ]; then
+    if [ -e "$XMLTV_LOCATION_SCRIPT" ] ; then
+      exec "$XMLTV_LOCATION_SCRIPT"
+    fi
+  elif [ "$XMLTV_TYPE" = "WEB" ]; then
+    wget -qO - "$XMLTV_LOCATION_WEB"
+    exit 0
+  fi
+fi
+
+dflag=
+vflag=
+cflag=
+
+for a in "$@"
+do
+  [ "$a" = "-d" -o "$a" = "--description"  ] && dflag=1
+  [ "$a" = "-v" -o "$a" = "--version"      ] && vflag=1
+  [ "$a" = "-c" -o "$a" = "--capabilities" ] && cflag=1
+done
+
+if [ -n "$dflag" ]
+then
+  echo "sample grabber"
+fi
+
+if [ -n "$vflag" ]
+then
+  echo "1.0"
+fi
+
+if [ -n "$cflag" ]
+then
+  echo "baseline"
+fi

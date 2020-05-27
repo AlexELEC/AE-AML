@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<shortcuts>
+	<shortcut>
+		<defaultID>pictures</defaultID>
+		<label>1</label>
+		<label2 />
+		<icon>special://skin/extras/icons/DefaultPicture.png</icon>
+		<thumb />
+		<action>ActivateWindow(Pictures,return)</action>
+	</shortcut>
+	<shortcut>
+		<defaultID>weather</defaultID>
+		<label>12600</label>
+		<label2 />
+		<icon>special://skin/extras/icons/DefaultAddonWeather.png</icon>
+		<thumb />
+		<action>ActivateWindow(Weather)</action>
+	</shortcut>
+	<shortcut>
+		<defaultID>livetv</defaultID>
+		<label>$SKIN[31502|skin.aeon.nox.ae|ТВ]</label>
+		<label2 />
+		<icon>special://skin/extras/icons/DefaultAddonPVRClient.png</icon>
+		<thumb>special://skin/extras/icons/tv.png</thumb>
+		<action>ActivateWindow(TVChannels)</action>
+	</shortcut>
+	<shortcut>
+		<defaultID>videos</defaultID>
+		<label>3</label>
+		<label2>Пользовательский элемент</label2>
+		<icon>special://skin/extras/icons/DefaultVideo.png</icon>
+		<thumb />
+		<action>ActivateWindow(Videos,addons://sources/video/,return)</action>
+	</shortcut>
+	<shortcut>
+		<defaultID>favourites</defaultID>
+		<label>1036</label>
+		<label2 />
+		<icon>special://skin/extras/icons/Favorites.png</icon>
+		<thumb />
+		<action>ActivateWindow(Favourites)</action>
+	</shortcut>
+	<shortcut>
+		<defaultID>settings</defaultID>
+		<label>13000</label>
+		<label2 />
+		<icon>special://skin/extras/icons/DefaultAddonService.png</icon>
+		<thumb />
+		<action>ActivateWindow(Settings)</action>
+	</shortcut>
+	<shortcut>
+		<defaultID>music</defaultID>
+		<label>2</label>
+		<label2 />
+		<icon>special://skin/extras/icons/DefaultAudio.png</icon>
+		<thumb />
+		<action>ActivateWindow(Music,musicdb://,return)</action>
+	</shortcut>
+</shortcuts>

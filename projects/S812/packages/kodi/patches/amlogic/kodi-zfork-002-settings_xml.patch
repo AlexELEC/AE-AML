@@ -1,0 +1,72 @@
+diff -Naurp kodi-7a4650f/system/settings/settings.xml kodi-7a4650f-patch/system/settings/settings.xml
+--- kodi-7a4650f/system/settings/settings.xml	2018-08-07 14:50:54.000000000 +0300
++++ kodi-7a4650f-patch/system/settings/settings.xml	2018-08-07 15:00:31.000000000 +0300
+@@ -73,7 +73,7 @@
+         </setting>
+         <setting id="videoplayer.stretch43" type="integer" label="173" help="36171">
+           <level>2</level>
+-          <default>0</default> <!-- ViewModeNormal -->
++          <default>4</default> <!-- ViewModeStretch16x9 -->
+           <constraints>
+             <options>
+               <option label="630">0</option> <!-- ViewModeNormal -->
+@@ -242,7 +242,7 @@
+       <group id="5" label="14233">
+         <setting id="videoplayer.teletextenabled" type="boolean" label="23050" help="36174">
+           <level>3</level>
+-          <default>true</default>
++          <default>false</default>
+           <control type="toggle" />
+         </setting>
+         <setting id="videoplayer.teletextscale" type="boolean" parent="videoplayer.teletextenabled" label="23055" help="36175">
+@@ -891,12 +891,12 @@
+         </setting>
+         <setting id="filelists.showhidden" type="boolean" label="21330" help="36127">
+           <level>2</level>
+-          <default>false</default>
++          <default>true</default>
+           <control type="toggle" />
+         </setting>
+         <setting id="filelists.allowfiledeletion" type="boolean" label="14071" help="36125">
+           <level>2</level>
+-          <default>false</default>
++          <default>true</default>
+           <dependencies>
+             <dependency type="enable">
+               <or>
+@@ -1303,7 +1303,7 @@
+       <group id="1" label="128">
+         <setting id="epg.pastdaystodisplay" type="integer" label="19229" help="36219">
+           <level>2</level>
+-          <default>1</default>
++          <default>0</default>
+           <constraints>
+             <minimum>0</minimum>
+             <step>1</step>
+@@ -1315,7 +1315,7 @@
+         </setting>
+         <setting id="epg.futuredaystodisplay" type="integer" label="19182" help="36220">
+           <level>2</level>
+-          <default>3</default>
++          <default>2</default>
+           <constraints>
+             <minimum>1</minimum>
+             <step>1</step>
+@@ -1348,7 +1348,7 @@
+       <group id="2" label="14303">
+         <setting id="epg.epgupdate" type="integer" label="19071" help="36221">
+           <level>2</level>
+-          <default>120</default>
++          <default>180</default>
+           <constraints>
+             <minimum>15</minimum>
+             <step>15</step>
+@@ -2950,7 +2950,7 @@
+       <group id="2" label="14111">
+         <setting id="eventlog.enabled" type="boolean" label="14112" help="36460">
+           <level>1</level>
+-          <default>true</default>
++          <default>false</default>
+           <control type="toggle" />
+         </setting>
+         <setting id="eventlog.enablednotifications" type="boolean" parent="eventlog.enabled" label="14113" help="36461">

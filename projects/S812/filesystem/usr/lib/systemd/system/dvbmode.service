@@ -1,0 +1,13 @@
+[Unit]
+Description=DVB mode service
+After=zram.service graphical.target
+Before=kodi.service tvip.service
+ConditionPathExists=/storage/.cache/services/dvbmode.conf
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'exec /usr/bin/dvbmode.start'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=kodi.target

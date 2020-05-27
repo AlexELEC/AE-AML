@@ -1,0 +1,14 @@
+diff -Naurp pvr.hts-326c1f7/pvr.hts/resources/settings.xml pvr.hts-326c1f7-patch/pvr.hts/resources/settings.xml
+--- pvr.hts-326c1f7/pvr.hts/resources/settings.xml	2018-07-27 11:36:43.000000000 +0300
++++ pvr.hts-326c1f7-patch/pvr.hts/resources/settings.xml	2018-08-01 13:12:16.000000000 +0300
+@@ -6,8 +6,8 @@
+     <setting id="htsp_port" type="number" option="int" label="30003" default="9982" />
+     <setting id="user" type="text" label="30004" default="" />
+     <setting id="pass" type="text" label="30005" option="hidden" enable="!eq(-1,)" default="" />
+-    <setting id="connect_timeout" type="slider" option="int" range="1,60" label="30006" default="10" />
+-    <setting id="response_timeout" type="slider" option="int" range="1,60" label="30007" default="5" />
++    <setting id="connect_timeout" type="slider" option="int" range="1,60" label="30006" default="15" />
++    <setting id="response_timeout" type="slider" option="int" range="1,60" label="30007" default="20" />
+   </category>
+ 
+   <category label="30009">

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+# compile and copy amlogic autoscript files to part1
+mcopy $RELEASE_DIR/3rdparty/bootloader/*autoscript :: 2>&1 > /dev/null || true
+
+if [ -a "$RELEASE_DIR/3rdparty/bootloader/aml_autoscript" ]; then
+      echo "image: creating Amlogic ZIP env-update package"
+	  pushd $RELEASE_DIR/3rdparty/bootloader > /dev/null
+	  zip -q env-update.zip aml_autoscript
+      echo "image: signing the env-update package"
+      mkdir -p sign
+      SIGNAPK_DIR="$ROOT/tools/signapk"
+      java -Xmx1024m -jar $SIGNAPK_DIR/signapk.jar -w $SIGNAPK_DIR/testkey.x509.pem $SIGNAPK_DIR/testkey.pk8 env-update.zip sign/aml_autoscript.zip
+	  popd > /dev/null
+      mcopy $RELEASE_DIR/3rdparty/bootloader/sign/aml_autoscript.zip ::
+fi

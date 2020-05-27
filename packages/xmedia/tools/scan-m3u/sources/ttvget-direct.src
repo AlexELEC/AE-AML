@@ -1,0 +1,205 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+SERVICE_DIR="/storage/.cache/services"
+M3U_DIR="/storage/ttv-m3u"
+TTV_API_URL="http://1ttvxbmc.top/v3"
+TTV_CH_LIST_FILE="/tmp/channels.ttv"
+TTV_CAT_LIST_FILE="/tmp/categories.ttv"
+TTV_M3U_FILE="$M3U_DIR/SITE-TTV.m3u"
+TVH_M3U="$M3U_DIR/SITE-TVH-TTV.m3u"
+TVH_LST="$M3U_DIR/SITE-TVH-TTV.list"
+
+ACE_DIR="/storage/.config/acestream"
+FAV_LIST="$ACE_DIR/Site-favorite.list"
+
+[ -f $SERVICE_DIR/acettv.conf ] && . $SERVICE_DIR/acettv.conf
+[ -f $SERVICE_DIR/acerun.conf ] && . $SERVICE_DIR/acerun.conf
+
+[ -z "$ACETTV_IP" ] && ACETTV_IP="0"
+[ -z "$TTV_LOGIN" ] && TTV_LOGIN="none"
+[ -z "$TTV_PASSW" ] && TTV_PASSW="none"
+
+if [ "$TTV_LOGIN" == "none" -o "$TTV_PASSW" == "none" ]; then
+  echo "Error: enter your username and password!"
+  exit
+fi
+
+get_cid()
+{
+ ENC_DATA=`curl -s $1 | openssl base64 -e`
+ JSON_DATA=`curl -s -A "Python-urllib/2.7" --max-time 5 --max-filesize 1024 --retry 2 -X POST -H "Content-Type: application/octet-stream" -d "$ENC_DATA" "http://api.torrentstream.net/upload/raw"`
+ echo "$JSON_DATA" | sed -re "s/.*\"content_id\":\"((.){40})\".*/\1/g"
+}
+
+build_m3u()
+{
+INFILE=$1
+cat $INFILE |  
+  while read -r LINE ; do
+      CH_CAT=`echo $LINE | awk -F\\# '{print $1}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_NAME=`echo $LINE | awk -F\\# '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_ID=`echo $LINE | awk -F\\# '{print $3}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_LOGO=`echo $LINE | awk -F\\# '{print $4}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_URL_ID=`curl -s "$TTV_API_URL/translation_stream.php?session=$TTV_SESSION&channel_id=$CH_ID&typeresult=json" | jq -r '.source'`
+      CH_CID=$(get_cid $CH_URL_ID)
+      [ "$CH_CID" == '{"error":"BDecode failed"}' ] && continue
+
+      echo "#EXTINF:-1 group-title=\"$CH_CAT\" tvg-logo=\"$CH_LOGO\",$CH_NAME" >> $INFILE.m3u
+      echo "http://${URL_IP}:6878/ace/getstream?id=${CH_CID}&.mp4" >> $INFILE.m3u
+
+      echo "#EXTINF:-1 group-title=\"$CH_CAT\" tvg-logo=\"$CH_LOGO\",$CH_NAME" >> $INFILE.tvh
+      echo "pipe://ttvstream-direct $CH_NAME" >> $INFILE.tvh
+      echo "$CH_NAME # http://${URL_IP}:6878/ace/getstream?id=${CH_CID}&.mp4" >> $INFILE.lst
+  done
+  rm -f $INFILE
+}
+
+### Main ###
+mkdir -p $M3U_DIR
+
+if [ "$ACETTV_IP" == "0" ]; then
+  URL_IP="127.0.0.1"
+else
+  URL_IP=`ifconfig eth0 | awk '/inet addr:/ {print $2}' | sed 's/addr://'`
+  if [ -z $URL_IP ]; then
+    URL_IP=`ifconfig wlan0 | awk '/inet addr:/ {print $2}' | sed 's/addr://'`
+    [ -z $URL_IP ] && URL_IP="127.0.0.1"
+  fi
+fi
+
+GUID=`cat /proc/sys/kernel/random/uuid | sed 's|-||g'`
+
+TTV_ANS=`curl -s "$TTV_API_URL/auth.php?username=$TTV_LOGIN&password=$TTV_PASSW&typeresult=json&application=xbmc&guid=$GUID" | jq -r '.success'`
+if [ $TTV_ANS != "1" ]; then
+  echo "Error: invalid username or password!"
+  exit
+fi
+
+TTV_SESSION=`curl -s "$TTV_API_URL/auth.php?username=$TTV_LOGIN&password=$TTV_PASSW&typeresult=json&application=xbmc&guid=$GUID" | jq -r '.session'`
+
+curl -s "$TTV_API_URL/translation_list.php?session=$TTV_SESSION&type=channel&typeresult=json" | jq -r '.categories[] | "CAT" + (.id|tostring) + "=" + "\"" + .name + "\""' > $TTV_CAT_LIST_FILE
+curl -s "$TTV_API_URL/channel_list.php?session=$TTV_SESSION&type=torrent&typeresult=json" | jq -r '.channels[] | "CAT" + (.category_id|tostring) + " # " +  .name + " # " + (.id|tostring) + " # " +  .logo' > $TTV_CH_LIST_FILE
+
+. $TTV_CAT_LIST_FILE
+sed -e "s|^CAT1 |$CAT1 |g" -e "s|^CAT2 |$CAT2 |g" \
+    -e "s|^CAT3 |$CAT3 |g" -e "s|^CAT4 |$CAT4 |g" \
+    -e "s|^CAT5 |$CAT5 |g" -e "s|^CAT6 |$CAT6 |g" \
+    -e "s|^CAT7 |$CAT7 |g" -e "s|^CAT8 |$CAT8 |g" \
+    -e "s|^CAT9 |$CAT9 |g" -e "s|^CAT10 |$CAT10 |g" \
+    -e "s|^CAT11 |$CAT11 |g" -e "s|^CAT12 |$CAT12 |g" -i $TTV_CH_LIST_FILE
+
+rm -f $TTV_CAT_LIST_FILE
+
+  [ "$CAT_SHOW" == 0 ] && sed '/^Развлекательные/d' -i $TTV_CH_LIST_FILE
+  [ "$CAT_COMM" == 0 ] && sed '/^Общие/d' -i $TTV_CH_LIST_FILE
+  [ "$CAT_FILMS" == 0 ] && sed '/^Фильмы/d' -i $TTV_CH_LIST_FILE
+  [ "$CAT_EROS" == 0 ] && sed '/^Эротика/d' -i $TTV_CH_LIST_FILE
+  [ "$CAT_NEWS" == 0 ] && sed '/^Новостные/d' -i $TTV_CH_LIST_FILE
+  [ "$CAT_REGION" == 0 ] && sed '/^Региональные/d' -i $TTV_CH_LIST_FILE
+  [ "$CAT_MUSIC" == 0 ] && sed '/^Музыка/d' -i $TTV_CH_LIST_FILE
+  [ "$CAT_CHILDREN" == 0 ] && sed '/^Детские/d' -i $TTV_CH_LIST_FILE
+  [ "$CAT_SPORT" == 0 ] && sed '/^Спорт/d' -i $TTV_CH_LIST_FILE
+  [ "$CAT_RELIGION" == 0 ] && sed '/^Религиозные/d' -i $TTV_CH_LIST_FILE
+  [ "$CAT_MAN" == 0 ] && sed '/^Мужские/d' -i $TTV_CH_LIST_FILE
+  [ "$CAT_LEARN" == 0 ] && sed '/^Познавательные/d' -i $TTV_CH_LIST_FILE
+
+# favorite channel start
+  if [ ! -f "${FAV_LIST}.sample" ]; then
+    cat $TTV_CH_LIST_FILE | awk -F\# '{print $1,"#",$2}' | sed 's/[ \t]*$//g' > ${FAV_LIST}.nosort
+    sort ${FAV_LIST}.nosort > ${FAV_LIST}.sample
+    rm -f ${FAV_LIST}.nosort
+  fi
+
+  if [ -f "$FAV_LIST" ]; then
+    rm -f ${TTV_CH_LIST_FILE}.fav
+    cp -f $FAV_LIST /tmp/tmp-fav.list
+    cat /tmp/tmp-fav.list |  
+      while read -r LINE ; do
+        CH_FAV=`echo $LINE | awk -F\# '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+        CH_STRING=`grep -m 1 "# $CH_FAV #" $TTV_CH_LIST_FILE`
+        [ -n "$CH_STRING" ] && echo "$CH_STRING" >> ${TTV_CH_LIST_FILE}.fav
+      done
+    [ -f "${TTV_CH_LIST_FILE}.fav" ] && mv -f ${TTV_CH_LIST_FILE}.fav $TTV_CH_LIST_FILE
+    rm -f /tmp/tmp-fav.list
+  fi
+# favorite channel end
+
+PART_DIR="/tmp/ttv"
+mkdir -p $PART_DIR
+COUNT_LINES=`wc -l $TTV_CH_LIST_FILE | awk '{print $1}'`
+
+if [ $COUNT_LINES -gt 200 ]; then
+  sed -n '1,100p' $TTV_CH_LIST_FILE > $PART_DIR/ttv.part1
+  sed -n '101,200p' $TTV_CH_LIST_FILE > $PART_DIR/ttv.part2
+  sed -e '1,200d' -i $TTV_CH_LIST_FILE
+  COUNT_LINES=`wc -l $TTV_CH_LIST_FILE | awk '{print $1}'`
+  if [ $COUNT_LINES -gt 200 ]; then
+    sed -n '1,100p' $TTV_CH_LIST_FILE > $PART_DIR/ttv.part3
+    sed -n '101,200p' $TTV_CH_LIST_FILE > $PART_DIR/ttv.part4
+    sed -e '1,200d' -i $TTV_CH_LIST_FILE
+    COUNT_LINES=`wc -l $TTV_CH_LIST_FILE | awk '{print $1}'`
+    if [ $COUNT_LINES -gt 200 ]; then
+      sed -n '1,100p' $TTV_CH_LIST_FILE > $PART_DIR/ttv.part5
+      sed -n '101,200p' $TTV_CH_LIST_FILE > $PART_DIR/ttv.part6
+      sed -e '1,200d' -i $TTV_CH_LIST_FILE
+      COUNT_LINES=`wc -l $TTV_CH_LIST_FILE | awk '{print $1}'`
+      if [ $COUNT_LINES -gt 200 ]; then
+        sed -n '1,100p' $TTV_CH_LIST_FILE > $PART_DIR/ttv.part7
+        sed -n '101,$p' $TTV_CH_LIST_FILE > $PART_DIR/ttv.part8
+      else
+        cp -f $TTV_CH_LIST_FILE $PART_DIR/ttv.part7
+      fi
+    else
+      cp -f $TTV_CH_LIST_FILE $PART_DIR/ttv.part5
+    fi
+  else
+    cp -f $TTV_CH_LIST_FILE $PART_DIR/ttv.part3
+  fi
+else
+  if [ $COUNT_LINES -gt 100 ]; then
+    sed -n '1,50p' $TTV_CH_LIST_FILE > $PART_DIR/ttv.part1
+    sed -n '51,$p' $TTV_CH_LIST_FILE > $PART_DIR/ttv.part2
+  else
+    cp -f $TTV_CH_LIST_FILE $PART_DIR/ttv.part1
+  fi
+fi
+
+rm -f $TTV_CH_LIST_FILE
+
+for fpart in $(ls $PART_DIR); do
+  build_m3u "$PART_DIR/$fpart" &
+done
+
+patern='ttv.part[1-9]'
+while true; do
+  usleep 250
+  [ $(ls /tmp/ttv/$patern 2>/dev/null | wc -l) -lt 1 ] && break
+done
+
+PART_ACE=`ls $PART_DIR/*.m3u 2>/dev/null`
+if [ "$PART_ACE" != "" ]; then
+  echo '#EXTM3U' > $TTV_M3U_FILE
+  cat $PART_ACE >> $TTV_M3U_FILE
+
+  # Add External playlist
+  [ -f "$M3U_DIR/add_playlist.m3u" ] && cat $M3U_DIR/add_playlist.m3u >> $TTV_M3U_FILE
+
+  PART_TVH=`ls $PART_DIR/*.tvh 2>/dev/null`
+  rm -f $TVH_LST
+  if [ "$PART_TVH" != "" ]; then
+      echo '#EXTM3U' > $TVH_M3U
+      cat $PART_TVH >> $TVH_M3U
+
+      PART_LST=`ls $PART_DIR/*.lst 2>/dev/null`
+      [ "$PART_LST" != "" ] && cat $PART_LST >> $TVH_LST
+  fi
+  echo "Done! Playlist created."
+else
+  echo "Error create playlist files!"
+fi
+rm -fr $PART_DIR
+
+exit

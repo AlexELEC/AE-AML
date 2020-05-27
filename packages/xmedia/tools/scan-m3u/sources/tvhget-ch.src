@@ -1,0 +1,130 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+SERVICE_DIR="/storage/.cache/services"
+TMP_DIR="/tmp/tvh-ch"
+M3U_DIR="/storage/ttv-m3u"
+PART_DIR="$TMP_DIR/split"
+TVH_STREAM_DIR="/storage/.config/tvh-stream"
+ACCESS_FILE="$TVH_STREAM_DIR/access.conf"
+
+[ -f "$SERVICE_DIR/tvip.conf" ] && . $SERVICE_DIR/tvip.conf
+
+URL_IP="127.0.0.1"
+
+if [ -n "$TVIP_TVHIP" ]; then
+  /usr/bin/ping -c 1 -q "$TVIP_TVHIP" > /dev/null 2>&1
+  [ $? == 0 ] && URL_IP="$TVIP_TVHIP"
+else
+  URL_IP=`ifconfig eth0 | awk '/inet addr:/ {print $2}' | sed 's/addr://'`
+  if [ -z "$URL_IP" ]; then
+    URL_IP=`ifconfig wlan0 | awk '/inet addr:/ {print $2}' | sed 's/addr://'`
+    [ -z "$URL_IP" ] && URL_IP="127.0.0.1"
+  fi
+fi
+
+if [ -s "$ACCESS_FILE" ]; then
+  ACCESS=`cat "$ACCESS_FILE"`
+  TVH_URL="http://${ACCESS}@${URL_IP}:9981"
+else
+  TVH_URL="http://${URL_IP}:9981"
+fi
+
+TVH_API_URL="$TVH_URL/api"
+
+# create M3U
+build_m3u()
+{
+INFILE=$1
+cat $INFILE |  
+  while read -r LINE ; do
+      CH_CATID=`echo $LINE | awk -F\\# '{print $1}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_NAME=`echo $LINE | awk -F\\# '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_ICON=`echo $LINE | awk -F\\# '{print $3}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_ID=`echo $LINE | awk -F\\# '{print $4}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_CAT=`grep -m 1 "^$CH_CATID #" $TMP_DIR/tag.list | awk -F\\# '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+      CH_LOGO=`echo "$CH_ICON" |  sed "s|^imagecache\/|${TVH_URL}\/imagecache\/|; s/^[ \t]*//; s/[ \t]*$//"`
+
+      echo "#EXTINF:-1 group-title=\"$CH_CAT\" tvg-logo=\"$CH_LOGO\",$CH_NAME" >> $INFILE.tvh
+      echo "$TVH_URL/stream/channel/${CH_ID}" >> $INFILE.tvh
+
+  done
+  rm -f $INFILE
+}
+
+split_file() {
+  TMP_LIST=$1
+  mkdir -p $PART_DIR
+  COUNT_LINES=`wc -l $TMP_LIST | awk '{print $1}'`
+
+  if [ $COUNT_LINES -gt 200 ]; then
+    sed -n '1,100p' $TMP_LIST > $PART_DIR/tvh.part1
+    sed -n '101,200p' $TMP_LIST > $PART_DIR/tvh.part2
+    sed -e '1,200d' -i $TMP_LIST
+    COUNT_LINES=`wc -l $TMP_LIST | awk '{print $1}'`
+    if [ $COUNT_LINES -gt 200 ]; then
+      sed -n '1,100p' $TMP_LIST > $PART_DIR/tvh.part3
+      sed -n '101,200p' $TMP_LIST > $PART_DIR/tvh.part4
+      sed -e '1,200d' -i $TMP_LIST
+      COUNT_LINES=`wc -l $TMP_LIST | awk '{print $1}'`
+      if [ $COUNT_LINES -gt 200 ]; then
+        sed -n '1,100p' $TMP_LIST > $PART_DIR/tvh.part5
+        sed -n '101,200p' $TMP_LIST > $PART_DIR/tvh.part6
+        sed -e '1,200d' -i $TMP_LIST
+        COUNT_LINES=`wc -l $TMP_LIST | awk '{print $1}'`
+        if [ $COUNT_LINES -gt 200 ]; then
+          sed -n '1,100p' $TMP_LIST > $PART_DIR/tvh.part7
+          sed -n '101,$p' $TMP_LIST > $PART_DIR/tvh.part8
+        else
+          cp -f $TMP_LIST $PART_DIR/tvh.part7
+        fi
+      else
+        cp -f $TMP_LIST $PART_DIR/tvh.part5
+      fi
+    else
+      cp -f $TMP_LIST $PART_DIR/tvh.part3
+    fi
+  else
+    if [ $COUNT_LINES -gt 100 ]; then
+      sed -n '1,50p' $TMP_LIST > $PART_DIR/tvh.part1
+      sed -n '51,$p' $TMP_LIST > $PART_DIR/tvh.part2
+    else
+      cp -f $TMP_LIST $PART_DIR/tvh.part1
+    fi
+  fi
+
+  rm -f $TMP_LIST
+}
+
+mkdir -p $TMP_DIR
+mkdir -p $M3U_DIR
+
+# get Tags
+curl -s "$TVH_API_URL/channeltag/list"| jq -r '.entries[] | .key + " # " + .val' > $TMP_DIR/tag.list
+# get Channels
+curl -s "$TVH_API_URL/channel/grid?start=0&limit=9999" | jq -r '.entries[] | (.number|tostring) + " -#- " + .tags[0] + " # " + .name + " # " + .icon_public_url  + " # " + .uuid' | sort -k 1 -n > $TMP_DIR/ch.list
+sed -i 's/^.* -#- //g' $TMP_DIR/ch.list
+
+split_file "$TMP_DIR/ch.list"
+
+for fpart in $(ls $PART_DIR); do
+  build_m3u "$PART_DIR/$fpart" &
+done
+
+patern='tvh.part[1-9]'
+while true; do
+  usleep 250
+  [ $(ls /tmp/tvh-ch/split/$patern 2>/dev/null | wc -l) -lt 1 ] && break
+done
+
+echo '#EXTM3U' > $M3U_DIR/tvh-channels.m3u
+PART_TVH=`ls $PART_DIR/*.tvh 2>/dev/null`
+if [ "$PART_TVH" != "" ]; then
+  cat $PART_TVH >> $M3U_DIR/tvh-channels.m3u
+else
+  echo "Error create TVH playlist files!"
+fi
+
+rm -fr $TMP_DIR

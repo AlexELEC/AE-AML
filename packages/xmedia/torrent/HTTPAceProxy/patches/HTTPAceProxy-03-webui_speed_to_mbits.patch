@@ -1,0 +1,38 @@
+diff -Naurp HTTPAceProxy-0701395/http/index.html HTTPAceProxy-0701395-patch/http/index.html
+--- HTTPAceProxy-0701395/http/index.html	2019-05-09 17:28:46.000000000 +0300
++++ HTTPAceProxy-0701395-patch/http/index.html	2019-06-14 22:07:55.000000000 +0300
+@@ -80,7 +80,7 @@
+                             <th scope="col">Client/Location</th>
+                             <th scope="col">Start time</th>
+                             <th scope="col">Duration</th>
+-                            <th scope="col">Speed kB/s</th>
++                            <th scope="col">Speed Mbit/s</th>
+                             <th scope="col">Peers<button type="button" class="btn btn-help btn-primary" data-toggle="popover">?</button></th>
+                         </tr>
+                     </thead>
+diff -Naurp HTTPAceProxy-0701395/http/js/index.js HTTPAceProxy-0701395-patch/http/js/index.js
+--- HTTPAceProxy-0701395/http/js/index.js	2019-05-09 17:28:46.000000000 +0300
++++ HTTPAceProxy-0701395-patch/http/js/index.js	2019-06-14 22:05:50.000000000 +0300
+@@ -136,9 +136,9 @@ $(document).ready(function() {
+ 
+                 peers_html = stat_peers + '<span class="badge badge-pill badge-' + badgeCss + ' bage-fixsize">' + stat_status + '</span>',
+ 
+-                speed_down = typeof item.stat['speed_down'] == "undefined" ? "n/a" : item.stat['speed_down'],
++                speed_down = typeof item.stat['speed_down'] == "undefined" ? "n/a" : ((item.stat['speed_down'] * 0.008).toFixed(2)),
+ 
+-                speed_up = typeof item.stat['speed_up'] == "undefined" ? "n/a" : item.stat['speed_up'],
++                speed_up = typeof item.stat['speed_up'] == "undefined" ? "n/a" : ((item.stat['speed_up'] * 0.008).toFixed(2)),
+ 
+                 rowID = item.sessionID,
+ 
+@@ -168,8 +168,8 @@ $(document).ready(function() {
+             } else {
+                 $row.attr('title', title_attr);
+                 $row.find('.duration-time').text(item.durationTime);
+-                $row.find('.speed-down').text(item.stat['speed_down']);
+-                $row.find('.speed-up').text(item.stat['speed_up']);
++                $row.find('.speed-down').text((item.stat['speed_down'] * 0.008).toFixed(2));
++                $row.find('.speed-up').text((item.stat['speed_up'] * 0.008).toFixed(2))
+                 $row.find('.peers').html(peers_html);
+                 $row.data('update', true);
+             }

@@ -1,0 +1,30 @@
+diff -Naurp tvheadend-2591563/src/subscriptions.c tvheadend-2591563-patch/src/subscriptions.c
+--- tvheadend-2591563/src/subscriptions.c	2018-12-07 09:09:42.000000000 +0200
++++ tvheadend-2591563-patch/src/subscriptions.c	2018-12-07 09:31:13.000000000 +0200
+@@ -403,6 +403,26 @@ subscription_reschedule(void)
+         s->ths_service = si->si_s;
+ 
+       s->ths_last_error = 0;
++
++      /* Reconnect IPTV */
++      if(s->ths_testing_error == SM_CODE_NO_INPUT) {
++        source_info_t si_tmp;
++        s->ths_service->s_setsourceinfo(s->ths_service, &si_tmp);
++        if(strstr(si_tmp.si_network, "IPTV") != NULL) {
++          if (s->ths_channel)
++            tvhinfo(LS_SUBSCRIPTION, "*** %04X: restarting IPTV channel \"%s\" ***",
++                  shortid(s), channel_get_name(s->ths_channel));
++          else
++            tvhinfo(LS_SUBSCRIPTION, "*** %04X: restarting IPTV service \"%s\" ***",
++                  shortid(s), s->ths_service->s_nicename);
++          s->ths_testing_error = 0;
++          s->ths_current_instance = NULL;
++          service_instance_list_clear(&s->ths_instances);
++          service_source_info_free(&si_tmp);
++          continue;
++        }
++        service_source_info_free(&si_tmp);
++      }
+     }
+ 
+     error = s->ths_testing_error;

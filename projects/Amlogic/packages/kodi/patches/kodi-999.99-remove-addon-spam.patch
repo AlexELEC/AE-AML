@@ -1,0 +1,40 @@
+diff --git a/xbmc/addons/AddonVersion.cpp b/xbmc/addons/AddonVersion.cpp
+index 425fec8..68f9412 100644
+--- a/xbmc/addons/AddonVersion.cpp
++++ b/xbmc/addons/AddonVersion.cpp
+@@ -41,7 +41,7 @@ namespace ADDON
+       mRevision = mUpstream.substr(pos+1);
+       if (mRevision.find_first_not_of(VALID_ADDON_VERSION_CHARACTERS) != std::string::npos)
+       {
+-        CLog::Log(LOGERROR, "AddonVersion: {} is not a valid revision number", mRevision);
++        CLog::Log(LOGDEBUG, "AddonVersion: {} is not a valid revision number", mRevision);
+         mRevision = "";
+       }
+       mUpstream.erase(pos);
+@@ -49,7 +49,7 @@ namespace ADDON
+ 
+     if (mUpstream.find_first_not_of(VALID_ADDON_VERSION_CHARACTERS) != std::string::npos)
+     {
+-      CLog::Log(LOGERROR, "AddonVersion: {} is not a valid version", mUpstream);
++      CLog::Log(LOGDEBUG, "AddonVersion: {} is not a valid version", mUpstream);
+       mUpstream = "0.0.0";
+     }
+   }
+diff --git a/xbmc/addons/Repository.cpp b/xbmc/addons/Repository.cpp
+index 9c97aaa..f019823 100644
+--- a/xbmc/addons/Repository.cpp
++++ b/xbmc/addons/Repository.cpp
+@@ -170,11 +170,11 @@ CRepository::CRepository(CAddonInfo addonInfo, DirList dirs)
+     CURL datadir(dir.datadir);
+     if (datadir.IsProtocol("http"))
+     {
+-      CLog::Log(LOGWARNING, "Repository add-on {} uses plain HTTP for add-on downloads in path {} - this is insecure and will make your Kodi installation vulnerable to attacks if enabled!", ID(), datadir.GetRedacted());
++      CLog::Log(LOGDEBUG, "Repository add-on {} uses plain HTTP for add-on downloads in path {} - this is insecure and will make your Kodi installation vulnerable to attacks if enabled!", ID(), datadir.GetRedacted());
+     }
+     else if (datadir.IsProtocol("https") && datadir.HasProtocolOption("verifypeer") && datadir.GetProtocolOption("verifypeer") == "false")
+     {
+-      CLog::Log(LOGWARNING, "Repository add-on {} disabled peer verification for add-on downloads in path {} - this is insecure and will make your Kodi installation vulnerable to attacks if enabled!", ID(), datadir.GetRedacted());
++      CLog::Log(LOGDEBUG, "Repository add-on {} disabled peer verification for add-on downloads in path {} - this is insecure and will make your Kodi installation vulnerable to attacks if enabled!", ID(), datadir.GetRedacted());
+     }
+   }
+ }

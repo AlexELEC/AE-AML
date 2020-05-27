@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+TORRSRV_DIR="/storage/.config/torrserver"
+TORRSRV_BIN="$TORRSRV_DIR/bin/TorrServer"
+
+[ ! -x $TORRSRV_BIN ] && exit 1
+
+SERVICE_DIR="/storage/.cache/services"
+LOG_FILE="/var/log/torrserver.log"
+TORRSRV_ARGS="--path $TORRSRV_DIR"
+
+[ -f $SERVICE_DIR/torrserver.conf ] && . $SERVICE_DIR/torrserver.conf
+
+[ -n "$TORRSRV_PORT" ] && TORRSRV_ARGS="$TORRSRV_ARGS --port $TORRSRV_PORT"
+
+if [ "$TORRSRV_DEBUG" == "1" ]; then
+  exec $TORRSRV_BIN $TORRSRV_ARGS > $LOG_FILE 2>&1
+else
+  exec $TORRSRV_BIN $TORRSRV_ARGS > /dev/null 2>&1
+fi

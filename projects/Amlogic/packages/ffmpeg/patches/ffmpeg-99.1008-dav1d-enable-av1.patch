@@ -1,0 +1,57 @@
+diff -Nur a/configure b/configure
+--- a/configure	2018-11-23 12:03:27.041287929 -0500
++++ b/configure	2018-11-23 12:08:52.945786916 -0500
+@@ -226,6 +226,7 @@
+   --enable-libcelt         enable CELT decoding via libcelt [no]
+   --enable-libcdio         enable audio CD grabbing with libcdio [no]
+   --enable-libcodec2       enable codec2 en/decoding using libcodec2 [no]
++  --enable-libdav1d        enable AV1 decoding via libdav1d [no]
+   --enable-libdc1394       enable IIDC-1394 grabbing using libdc1394
+                            and libraw1394 [no]
+   --enable-libfdk-aac      enable AAC de/encoding via libfdk-aac [no]
+@@ -1700,6 +1701,7 @@
+     libcaca
+     libcelt
+     libcodec2
++    libdav1d
+     libdc1394
+     libdrm
+     libflite
+@@ -3062,6 +3064,7 @@
+ libcelt_decoder_deps="libcelt"
+ libcodec2_decoder_deps="libcodec2"
+ libcodec2_encoder_deps="libcodec2"
++libdav1d_decoder_deps="libdav1d"
+ libfdk_aac_decoder_deps="libfdk_aac"
+ libfdk_aac_encoder_deps="libfdk_aac"
+ libfdk_aac_encoder_select="audio_frame_queue"
+@@ -6003,6 +6006,7 @@
+                                die "ERROR: libcelt must be installed and version must be >= 0.11.0."; }
+ enabled libcaca           && require_pkg_config libcaca caca caca.h caca_create_canvas
+ enabled libcodec2         && require libcodec2 codec2/codec2.h codec2_create -lcodec2
++enabled libdav1d          && require_pkg_config libdav1d "dav1d >= 0.0.1" "dav1d/dav1d.h" dav1d_version
+ enabled libdc1394         && require_pkg_config libdc1394 libdc1394-2 dc1394/dc1394.h dc1394_new
+ enabled libdrm            && require_pkg_config libdrm libdrm xf86drm.h drmGetVersion
+ enabled libfdk_aac        && { check_pkg_config libfdk_aac fdk-aac "fdk-aac/aacenc_lib.h" aacEncOpen ||
+diff -Nur a/libavcodec/allcodecs.c b/libavcodec/allcodecs.c
+--- a/libavcodec/allcodecs.c	2018-11-23 12:03:27.041287929 -0500
++++ b/libavcodec/allcodecs.c	2018-11-23 12:11:08.584268221 -0500
+@@ -670,6 +670,7 @@
+ extern AVCodec ff_libcelt_decoder;
+ extern AVCodec ff_libcodec2_encoder;
+ extern AVCodec ff_libcodec2_decoder;
++extern AVCodec ff_libdav1d_decoder;
+ extern AVCodec ff_libfdk_aac_encoder;
+ extern AVCodec ff_libfdk_aac_decoder;
+ extern AVCodec ff_libgsm_encoder;
+diff -Nur a/libavcodec/Makefile b/libavcodec/Makefile
+--- a/libavcodec/Makefile	2018-11-23 12:03:27.041287929 -0500
++++ b/libavcodec/Makefile	2018-11-23 12:10:28.676717867 -0500
+@@ -954,6 +954,7 @@
+ OBJS-$(CONFIG_LIBCELT_DECODER)            += libcelt_dec.o
+ OBJS-$(CONFIG_LIBCODEC2_DECODER)          += libcodec2.o codec2utils.o
+ OBJS-$(CONFIG_LIBCODEC2_ENCODER)          += libcodec2.o codec2utils.o
++OBJS-$(CONFIG_LIBDAV1D_DECODER)           += libdav1d.o
+ OBJS-$(CONFIG_LIBFDK_AAC_DECODER)         += libfdk-aacdec.o
+ OBJS-$(CONFIG_LIBFDK_AAC_ENCODER)         += libfdk-aacenc.o
+ OBJS-$(CONFIG_LIBGSM_DECODER)             += libgsmdec.o

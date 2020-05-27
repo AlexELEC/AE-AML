@@ -1,0 +1,10 @@
+<shortcuts>
+	<shortcut>
+		<defaultID>24001</defaultID>
+		<label>24001</label>
+		<label2 />
+		<icon />
+		<thumb />
+		<action>ActivateWindow(Pictures,Addons,return)</action>
+	</shortcut>
+</shortcuts>

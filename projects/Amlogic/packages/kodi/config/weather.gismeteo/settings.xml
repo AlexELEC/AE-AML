@@ -1,0 +1,18 @@
+<settings version="2">
+    <setting id="CurrentLocation">true</setting>
+    <setting id="Language" default="true">0</setting>
+    <setting id="Location1">Киев</setting>
+    <setting id="Location1ID">4944</setting>
+    <setting id="Location2" default="true"></setting>
+    <setting id="Location2ID" default="true"></setting>
+    <setting id="Location3" default="true"></setting>
+    <setting id="Location3ID" default="true"></setting>
+    <setting id="Location4" default="true"></setting>
+    <setting id="Location4ID" default="true"></setting>
+    <setting id="Location5" default="true"></setting>
+    <setting id="Location5ID" default="true"></setting>
+    <setting id="PrecipUnit" default="true">0</setting>
+    <setting id="PresUnit" default="true">0</setting>
+    <setting id="TimeZone" default="true">0</setting>
+    <setting id="Weekend" default="true">0</setting>
+</settings>

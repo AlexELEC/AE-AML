@@ -1,0 +1,45 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+CONFIG_FILE="/storage/.config/ramclear.conf"
+
+[ -f "$CONFIG_FILE" ] && . $CONFIG_FILE
+[ -z "$RAMCLEAR_TIME" ] && RAMCLEAR_TIME="2"
+
+(
+if [ $RAMCLEAR_TIME -ge 1 ]; then
+  logger -t memory "Start clear memory every $RAMCLEAR_TIME min."
+  RAM_IN=`free -m | grep 'Mem:' | awk '{print $4}'`
+  sync
+  echo 3 > /proc/sys/vm/drop_caches
+  RAM_OUT=`free -m | grep 'Mem:' | awk '{print $4}'`
+  if [ $RAM_OUT -gt $RAM_IN ]; then
+      let RAM_CLEAR=$RAM_OUT-$RAM_IN
+      logger -t memory "$RAM_CLEAR MB of memory freed"
+  fi
+
+  RAM_LATEST=$RAM_OUT
+  while [ true ] ; do
+      RAM_IN=$RAM_LATEST
+      let RAM_IF=$RAM_IN-4
+      sleep ${RAMCLEAR_TIME}m
+      RAM_POST=`free -m | grep 'Mem:' | awk '{print $4}'`
+      if [ $RAM_IF -gt $RAM_POST ]; then
+          sync
+          echo 3 > /proc/sys/vm/drop_caches
+          RAM_OUT=`free -m | grep 'Mem:' | awk '{print $4}'`
+          if [ $RAM_OUT -gt $RAM_POST ]; then
+              let RAM_CLEAR=$RAM_OUT-$RAM_POST
+              logger -t memory "$RAM_CLEAR MB of memory freed"
+          fi
+          RAM_LATEST=$RAM_OUT
+      elif [ $RAM_POST -gt $RAM_IN ]; then
+          RAM_LATEST=$RAM_POST
+      else
+          RAM_LATEST=$RAM_IN
+      fi
+  done
+fi
+) &

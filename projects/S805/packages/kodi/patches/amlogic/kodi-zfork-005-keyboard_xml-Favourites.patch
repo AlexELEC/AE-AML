@@ -1,0 +1,11 @@
+diff -Naurp kodi-7f93d8b/system/keymaps/keyboard.xml kodi-7f93d8b-patch/system/keymaps/keyboard.xml
+--- kodi-7f93d8b/system/keymaps/keyboard.xml	2019-01-28 09:58:25.000000000 +0200
++++ kodi-7f93d8b-patch/system/keymaps/keyboard.xml	2019-01-27 18:14:52.000000000 +0200
+@@ -113,6 +113,7 @@
+       <f2>ActivateWindow(Videos)</f2>
+       <f3>ActivateWindow(Music)</f3>
+       <f4>ActivateWindow(Pictures)</f4>
++      <f5>ActivateWindow(Favourites)</f5>
+       <!-- Multimedia keyboard keys -->
+       <browser_back>Back</browser_back>
+       <browser_forward/>

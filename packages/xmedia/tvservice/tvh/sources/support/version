@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+# Update Tvheadend version file (if required)
+
+# Path to version file
+FILE=$1
+
+# Calculate version
+VER="@TVH_VERSION_NUMBER@ ~ Alex@ELEC"
+
+# Output
+if [ -z "$FILE" ]; then
+  echo $VER
+  exit
+fi
+
+# Leave (probably ppa build)
+if [ -z "$VER" -a -s "$FILE" ]; then
+  cat "$FILE"
+  exit
+fi
+
+# Update?
+NEW_VER="const char *tvheadend_version = \"$VER\";"
+OLD_VER=$(cat "$FILE" 2> /dev/null)
+if [ "$NEW_VER" != "$OLD_VER" ]; then
+  echo $NEW_VER > "$FILE"
+fi
+echo $VER

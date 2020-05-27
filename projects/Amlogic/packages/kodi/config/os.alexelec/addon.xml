@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="os.alexelec" version="@OS_VERSION@" provider-name="AlexELEC">
+  <requires>
+    <import addon="xbmc.addon" version="12.0"/>
+  </requires>
+</addon>

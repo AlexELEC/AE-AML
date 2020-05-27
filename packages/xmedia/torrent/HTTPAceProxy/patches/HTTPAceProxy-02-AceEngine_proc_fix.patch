@@ -1,0 +1,40 @@
+diff -Naurp HTTPAceProxy-0701395/acehttp.py HTTPAceProxy-0701395-patch/acehttp.py
+--- HTTPAceProxy-0701395/acehttp.py	2019-05-09 17:28:46.000000000 +0300
++++ HTTPAceProxy-0701395-patch/acehttp.py	2019-06-12 21:55:10.000000000 +0300
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python3
++#!/usr/bin/python
+ # -*- coding: utf-8 -*-
+ '''
+ 
+@@ -84,7 +84,10 @@ class HTTPHandler(BaseHTTPRequestHandler
+         '''
+         self.handlerGreenlet = gevent.getcurrent() # Current greenlet
+         self.clientip = self.headers['X-Forwarded-For'] if 'X-Forwarded-For' in self.headers else self.client_address[0] # Connected client IP address
+-        logging.info('Accepted connection from %s path %s' % (self.clientip, unquote(self.path)))
++        connect_patch=unquote(self.path)
++        if not 'get_status' in connect_patch:
++            if not 'stat' in connect_patch:
++                logging.info('Accepted connection from %s path %s' % (self.clientip, connect_patch))
+         logging.debug('Client headers: %s' % dict(self.headers))
+ 
+         parse_req = urlparse(self.path)
+@@ -481,7 +484,7 @@ if AceConfig.osplatform != 'Windows' and
+ AceProxy.pool = Pool()
+ AceProxy.clientcounter = ClientCounter()
+ #### AceEngine startup
+-AceProxy.ace = findProcess('ace_engine.exe' if AceConfig.osplatform == 'Windows' else os.path.basename(AceConfig.acecmd))
++AceProxy.ace = findProcess('acestream.start')
+ if not AceProxy.ace and AceConfig.acespawn:
+    if spawnAce():
+       logger.info('Local AceStream engine spawned with pid %s' % AceProxy.ace.pid)
+@@ -493,9 +496,6 @@ elif AceProxy.ace:
+ # If AceEngine started (found) localy
+ if AceProxy.ace:
+    AceConfig.ace['aceHostIP'] = '127.0.0.1'
+-   # Refreshes the acestream.port file for OS Windows.....
+-   if AceConfig.osplatform == 'Windows': detectPort()
+-   else: gevent.sleep(AceConfig.acestartuptimeout)
+ else:
+    url = 'http://{aceHostIP}:{aceHTTPport}/webui/api/service'.format(**AceConfig.ace)
+    params = {'method': 'get_version', 'format': 'json', 'callback': 'mycallback'}

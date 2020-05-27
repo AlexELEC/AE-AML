@@ -1,0 +1,62 @@
+diff -Naurp kodi-7d27c5e/addons/skin.estuary/language/resource.language.en_gb/strings.po kodi-7d27c5e-patch/addons/skin.estuary/language/resource.language.en_gb/strings.po
+--- kodi-7d27c5e/addons/skin.estuary/language/resource.language.en_gb/strings.po	2019-01-09 14:02:16.000000000 +0200
++++ kodi-7d27c5e-patch/addons/skin.estuary/language/resource.language.en_gb/strings.po	2019-01-10 14:41:02.000000000 +0200
+@@ -765,3 +765,11 @@ msgstr ""
+ msgctxt "#31167"
+ msgid "Animate background"
+ msgstr ""
++
++msgctxt "#31301"
++msgid "Reboot to eMMC/NAND"
++msgstr ""
++
++msgctxt "#31302"
++msgid "Restart Kodi"
++msgstr ""
+diff -Naurp kodi-3b2bb11/addons/skin.estuary/language/resource.language.ru_ru/strings.po kodi-3b2bb11-patch/addons/skin.estuary/language/resource.language.ru_ru/strings.po
+--- kodi-3b2bb11/addons/skin.estuary/language/resource.language.ru_ru/strings.po	2019-01-16 07:09:08.000000000 +0200
++++ kodi-3b2bb11-patch/addons/skin.estuary/language/resource.language.ru_ru/strings.po	2019-01-16 14:08:13.000000000 +0200
+@@ -575,3 +575,11 @@ msgstr "Аватар профиля"
+ msgctxt "#31167"
+ msgid "Animate background"
+ msgstr "Анимированный фон"
++
++msgctxt "#31301"
++msgid "Reboot to eMMC/NAND"
++msgstr "Перезагрузить в eMMC/NAND"
++
++msgctxt "#31302"
++msgid "Restart Kodi"
++msgstr "Перезагрузить Kodi"
+diff -Naurp kodi-7d27c5e/addons/skin.estuary/xml/DialogButtonMenu.xml kodi-7d27c5e-patch/addons/skin.estuary/xml/DialogButtonMenu.xml
+--- kodi-7d27c5e/addons/skin.estuary/xml/DialogButtonMenu.xml	2019-01-09 14:02:16.000000000 +0200
++++ kodi-7d27c5e-patch/addons/skin.estuary/xml/DialogButtonMenu.xml	2019-01-10 14:40:27.000000000 +0200
+@@ -49,6 +49,16 @@
+ 						<visible>System.CanHibernate</visible>
+ 					</item>
+ 					<item>
++						<label>$LOCALIZE[31301]</label>
++						<onclick>System.ExecWait("/usr/sbin/rebootfromnand")</onclick>
++						<onclick>Reset()</onclick>
++						<visible>!System.IsNandInstall</visible>
++					</item>
++					<item>
++						<label>$LOCALIZE[31302]</label>
++						<onclick>RestartApp()</onclick>
++					</item>
++					<item>
+ 						<label>$LOCALIZE[13013]</label>
+ 						<onclick>Reset()</onclick>
+ 						<visible>System.CanReboot</visible>
+diff -Naurp kodi-7d27c5e/xbmc/utils/SystemInfo.cpp kodi-7d27c5e-patch/xbmc/utils/SystemInfo.cpp
+--- kodi-7d27c5e/xbmc/utils/SystemInfo.cpp	2019-01-10 14:25:22.000000000 +0200
++++ kodi-7d27c5e-patch/xbmc/utils/SystemInfo.cpp	2019-01-10 14:47:39.000000000 +0200
+@@ -644,7 +644,7 @@ std::string CSysInfo::GetOsVersion(void)
+       osVersion += ".0";
+   }
+ #elif defined(TARGET_LINUX)
+-  osVersion = getValueFromOs_release("VERSION_ID");
++  osVersion = getValueFromOs_release("ALEXELEC_ARCH");
+   if (osVersion.empty())
+     osVersion = getValueFromLsb_release(lsb_rel_release);
+ #endif // defined(TARGET_LINUX)

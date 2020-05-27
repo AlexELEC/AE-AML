@@ -1,0 +1,18 @@
+[Unit]
+Description=AceStream Engine
+Requires=network-online.target
+After=network-online.target
+Before=kodi.service
+ConditionPathExists=/storage/.cache/services/acestream.conf
+
+[Service]
+ExecStart=/usr/bin/acestream
+ExecStop=/bin/kill -TERM $MAINPID
+ExecStopPost=/bin/sh -c 'exec /usr/bin/acestream.stop'
+TimeoutStopSec=5
+Restart=always
+RestartSec=2
+StartLimitInterval=0
+
+[Install]
+WantedBy=kodi.target

@@ -1,0 +1,124 @@
+diff -Naurp linux-1be06c2/arch/arm/mach-meson8/pm.c linux-1be06c2-patch/arch/arm/mach-meson8/pm.c
+--- linux-1be06c2/arch/arm/mach-meson8/pm.c	2019-02-04 19:47:56.000000000 +0200
++++ linux-1be06c2-patch/arch/arm/mach-meson8/pm.c	2019-02-04 20:21:38.000000000 +0200
+@@ -21,8 +21,6 @@
+ #include <asm/delay.h>
+ #include <asm/uaccess.h>
+ 
+-#include <linux/gpio.h>
+-
+ #include <mach/pm.h>
+ #include <mach/am_regs.h>
+ #include <plat/sram.h>
+@@ -37,7 +35,6 @@
+ #include <mach/meson-secure.h>
+ #endif
+ 
+-#include <linux/amlogic/aml_gpio_consumer.h>
+ #ifdef CONFIG_SUSPEND_WATCHDOG
+ #include <mach/watchdog.h>
+ #endif /* CONFIG_SUSPEND_WATCHDOG */
+@@ -220,15 +217,12 @@ void analog_switch(int flag)
+ #ifdef CONFIG_HAS_EARLYSUSPEND
+ static void meson_system_early_suspend(struct early_suspend *h)
+ {
+-	int ret;
+ 	if (!early_suspend_flag) {
+ 	printk(KERN_INFO "2%s\n",__func__);
+ 
+-	ret = amlogic_gpio_request_one(GPIO_TEST_N,0,"aml-sysled"); //for power LED
+-	if(ret){
+-		printk("---%s----can not set output pin \n",__func__);
+-		amlogic_gpio_free(GPIO_TEST_N,"aml-sysled");
+-	}
++    //for power LED Off (RED)
++    CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<15);
++    CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<31);
+ 
+ 	if (pdata->set_exgpio_early_suspend) {
+ 		pdata->set_exgpio_early_suspend(OFF);
+@@ -241,13 +235,14 @@ static void meson_system_early_suspend(s
+ 
+ static void meson_system_late_resume(struct early_suspend *h)
+ {
+-	int ret;
+ 	if (early_suspend_flag) {
+ 		//early_power_gate_switch(ON);
+ 		//early_clk_switch(ON);
+ 		early_suspend_flag = 0;
+ 		printk(KERN_INFO "1%s\n",__func__);
+-		amlogic_set_value(GPIO_TEST_N,0,"aml-sysled");
++        //for power LED On (BLUE)
++        CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<15);
++        SET_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<31);
+ 	}
+ }
+ #endif
+@@ -275,14 +270,11 @@ static void meson_pm_suspend(void)
+ 	aml_clr_reg32_mask(P_HHI_SYS_CPU_CLK_CNTL, 1 << 7);
+ 	aml_clr_reg32_mask(P_HHI_SYS_PLL_CNTL, 1 << 30);//disable sys pll
+ 
+-#ifdef CONFIG_AML_GPIO_KEY  
+ 	if(det_pwr_key())//get pwr key and wakeup im
+ 	{
+ 		clr_pwr_key();
+ 		WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, FLAG_WAKEUP_PWRKEY);
+-	}else
+-#endif  
+-  {
++	}else{
+ #ifdef CONFIG_MESON_SUSPEND
+ #ifdef CONFIG_MESON_TRUSTZONE
+ 		meson_suspend_firmware();
+@@ -330,7 +322,6 @@ static void meson_pm_suspend(void)
+ 
+ void meson_pm_poweroff(void)
+ {
+-	amlogic_set_value(GPIO_TEST_N,1,"aml-sysled");
+ 	//close_hdmi();
+ 	aml_write_reg32(P_AO_RTI_STATUS_REG1, 0);
+ 
+@@ -372,17 +363,16 @@ static struct platform_suspend_ops meson
+ 
+ static void m6ref_set_vccx2(int power_on)
+ {
+-	/*
++
+     if(power_on == OFF) {
+         printk("m6ref_set_vccx2: OFF");
+         CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<15);
+-        SET_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<31);
++        CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<31);
+     } else {
+         printk("m6ref_set_vccx2: ON");
+         CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<15);
+-        CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<31);
++        SET_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<31);
+     }
+-	*/
+     return;
+ }
+ 
+@@ -399,7 +389,6 @@ static struct meson_pm_config aml_pm_pda
+ 
+ static int __init meson_pm_probe(struct platform_device *pdev)
+ {
+-	int ret;
+ 	printk(KERN_INFO "enter meson_pm_probe!\n");
+ #ifdef CONFIG_HAS_EARLYSUSPEND
+ 	early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
+@@ -407,14 +396,6 @@ static int __init meson_pm_probe(struct
+ 	early_suspend.resume = meson_system_late_resume;
+ 	register_early_suspend(&early_suspend);
+ #endif
+-	ret = amlogic_gpio_request_one(GPIO_TEST_N,GPIOF_OUT_INIT_LOW,"aml-sysled"); //for power LED
+-	if(ret){
+-		printk("---%s----can not set output pin \n",__func__);
+-		amlogic_gpio_free(GPIO_TEST_N,"aml-sysled");
+-		}else{
+-		printk("---%s----set output pin success\n",__func__);
+-	}
+-
+ 	pdev->dev.platform_data=&aml_pm_pdata;
+ 	pdata = pdev->dev.platform_data;
+ 	if (!pdata) {

@@ -1,0 +1,47 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+XMLTV_LOCATION_WEB="http://epg.iptvx.tv/xmltv.xml.gz"
+
+XMLTV_DIR="/storage/.config/tvheadend/xmltv.data"
+XMLTV_FILE_GZ="$XMLTV_DIR/iptvx.xml.gz"
+
+################################### --MAIN-- #####################################
+
+if [ $# -lt 1 ]; then
+  . /etc/profile
+
+  mkdir -p $XMLTV_DIR
+  curl -s --connect-timeout 5 --max-time 20 -R -z "$XMLTV_FILE_GZ" -o "$XMLTV_FILE_GZ" "$XMLTV_LOCATION_WEB"
+  [ ! -e "$XMLTV_FILE_GZ" ] && exit 1
+  zcat "$XMLTV_FILE_GZ"
+  exit 0
+fi
+
+dflag=
+vflag=
+cflag=
+
+for a in "$@"
+do
+  [ "$a" = "-d" -o "$a" = "--description"  ] && dflag=1
+  [ "$a" = "-v" -o "$a" = "--version"      ] && vflag=1
+  [ "$a" = "-c" -o "$a" = "--capabilities" ] && cflag=1
+done
+
+if [ -n "$dflag" ]
+then
+  echo "iptvx.tv"
+fi
+
+if [ -n "$vflag" ]
+then
+  echo "2.0"
+fi
+
+if [ -n "$cflag" ]
+then
+  echo "baseline"
+fi

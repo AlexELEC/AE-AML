@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+SERVICE_DIR="/storage/.cache/services"
+LOG_TVH="/var/log/tvheadend.log"
+LOG_TVH_OLD="/var/log/tvheadend.log.old"
+ANT_FILE="/proc/aml_fe/antoverload"
+
+TVH_BIN="tvheadend"
+TVH_HOME="/storage/.config/tvheadend"
+TVH_VERSION="/storage/.config/tvheadend-4.2"
+
+if [ -f "$TVH_VERSION" ]; then
+  TVH_BIN="tvheadend42"
+  TVH_HOME="/storage/.config/tvheadend42"
+fi
+
+[ -f "$SERVICE_DIR/tvheadend.conf" ] && . $SERVICE_DIR/tvheadend.conf
+
+if [ "$TVH_DEBUG" == "1" ]; then
+  [ -f "$LOG_TVH" ] && mv -f $LOG_TVH $LOG_TVH_OLD
+  TVHEADEND_ARG="-B -C -u root -g video -c $TVH_HOME -l $LOG_TVH -S"
+else
+  TVHEADEND_ARG="-B -C -u root -g video -c $TVH_HOME -S"
+fi
+
+# DVB & TTV networks config
+if [ ! -f "$TVH_HOME/networks.copy" -a -d /usr/share/tvheadend/networks ]; then
+  mkdir -p $TVH_HOME/input
+  cp -af /usr/share/tvheadend/networks/* $TVH_HOME/input
+  touch $TVH_HOME/networks.copy
+fi
+
+if [ "$TVH_FEINIT" == "1" ] ; then
+  TIMEOUT=30
+  for i in $(seq 1 $TIMEOUT) ; do
+    [ -e /dev/dvb/adapter0/frontend0 ] && break
+    sleep 1
+  done
+fi
+
+[ -f "$ANT_FILE" -a "$TVH_ANTPOWER" == "1" ] && echo 1 > $ANT_FILE
+
+exec /usr/bin/$TVH_BIN $TVHEADEND_ARG

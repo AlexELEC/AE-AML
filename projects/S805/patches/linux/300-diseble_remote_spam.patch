@@ -1,0 +1,12 @@
+diff -Naurp linux/drivers/amlogic/input/new_remote/remote_main.c linux-patch/drivers/amlogic/input/new_remote/remote_main.c
+--- linux/drivers/amlogic/input/new_remote/remote_main.c	2017-09-15 21:52:27.000000000 +0300
++++ linux-patch/drivers/amlogic/input/new_remote/remote_main.c	2018-11-21 21:03:59.000000000 +0200
+@@ -224,7 +224,7 @@ static int remote_mouse_event(struct inp
+ 
+ void remote_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type,int event)
+ {
+-	printk("remote_send_key\n");
++	//printk("remote_send_key\n");
+ 	if(scancode == FN_KEY_SCANCODE && type == 1) {
+ 		// switch from key to pointer
+ 		if(key_pointer_switch) {

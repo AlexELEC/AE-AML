@@ -1,0 +1,13 @@
+[Unit]
+Description=Show Version
+DefaultDependencies=false
+ConditionKernelCommandLine=!morequiet
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/boot_info
+RemainAfterExit=yes
+StandardOutput=tty
+
+[Install]
+WantedBy=basic.target

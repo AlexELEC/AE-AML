@@ -1,0 +1,11 @@
+diff -Naurp kodi-15.2-02e7013/xbmc/utils/CPUInfo.cpp kodi-15.2-02e7013-patch/xbmc/utils/CPUInfo.cpp
+--- kodi-15.2-02e7013/xbmc/utils/CPUInfo.cpp	2016-04-02 09:51:27.000000000 +0300
++++ kodi-15.2-02e7013-patch/xbmc/utils/CPUInfo.cpp	2016-04-02 08:54:26.000000000 +0300
+@@ -613,7 +604,6 @@ bool CCPUInfo::getTemperature(CTemperatu
+     if (!ret)
+     {
+       ret = fscanf(m_fProcTemperature, "%d", &value);
+-      value = value / 1000;
+       scale = 'c';
+       ret++;
+     }

@@ -1,0 +1,49 @@
+diff -Naurp kodi/xbmc/utils/CPUInfo.cpp kodi-patch/xbmc/utils/CPUInfo.cpp
+--- kodi/xbmc/utils/CPUInfo.cpp	2018-09-22 10:32:57.000000000 +0300
++++ kodi-patch/xbmc/utils/CPUInfo.cpp	2018-09-22 11:37:56.000000000 +0300
+@@ -263,18 +263,9 @@ CCPUInfo::CCPUInfo(void)
+   }
+ #else
+   m_fProcStat = fopen("/proc/stat", "r");
+-  m_fProcTemperature = fopen("/proc/acpi/thermal_zone/THM0/temperature", "r");
++  m_fProcTemperature = fopen("/sys/class/thermal/thermal_zone0/temp", "r");  // On Amlogic
+   if (m_fProcTemperature == NULL)
+-    m_fProcTemperature = fopen("/proc/acpi/thermal_zone/THRM/temperature", "r");
+-  if (m_fProcTemperature == NULL)
+-    m_fProcTemperature = fopen("/proc/acpi/thermal_zone/THR0/temperature", "r");
+-  if (m_fProcTemperature == NULL)
+-    m_fProcTemperature = fopen("/proc/acpi/thermal_zone/TZ0/temperature", "r");
+-  // read from the new location of the temperature data on new kernels, 2.6.39, 3.0 etc
+-  if (m_fProcTemperature == NULL)
+-    m_fProcTemperature = fopen("/sys/class/hwmon/hwmon0/temp1_input", "r");
+-  if (m_fProcTemperature == NULL)
+-    m_fProcTemperature = fopen("/sys/class/thermal/thermal_zone0/temp", "r");  // On Raspberry PIs
++    m_fProcTemperature = fopen("/sys/class/thermal/thermal_zone1/temp", "r");
+ 
+   m_fCPUFreq = fopen ("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq", "r");
+   if (!m_fCPUFreq)
+diff -Naurp kodi/xbmc/windows/GUIWindowSystemInfo.cpp kodi-patch/xbmc/windows/GUIWindowSystemInfo.cpp
+--- kodi/xbmc/windows/GUIWindowSystemInfo.cpp	2018-09-22 11:30:54.000000000 +0300
++++ kodi-patch/xbmc/windows/GUIWindowSystemInfo.cpp	2018-09-22 11:41:52.000000000 +0300
+@@ -144,21 +144,10 @@ void CGUIWindowSystemInfo::FrameMove()
+   {
+     SET_CONTROL_LABEL(40,g_localizeStrings.Get(20160));
+     SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUModel());
+-#if defined(__arm__) && defined(TARGET_LINUX)
+-    SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUBogoMips());
+-    if (!g_sysinfo.GetCPUSoC().empty())
+-      SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUSoC());
+     SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUHardware());
+-    SET_CONTROL_LABEL(i++, g_sysinfo.GetCPURevision());
+-    SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUSerial());
+-#endif
+     SetControlLabel(i++, "%s %s", 22011, SYSTEM_CPU_TEMPERATURE);
+-#if (!defined(__arm__) && !defined(__aarch64__)) || defined(TARGET_RASPBERRY_PI)
+     SetControlLabel(i++, "%s %s", 13284, SYSTEM_CPUFREQUENCY);
+-#endif
+-#if !(defined(__arm__) && defined(TARGET_LINUX))
+     SetControlLabel(i++, "%s %s", 13271, SYSTEM_CPU_USAGE);
+-#endif
+     i++;  // empty line
+     SetControlLabel(i++, "%s: %s", 22012, SYSTEM_TOTAL_MEMORY);
+     SetControlLabel(i++, "%s: %s", 158, SYSTEM_FREE_MEMORY);

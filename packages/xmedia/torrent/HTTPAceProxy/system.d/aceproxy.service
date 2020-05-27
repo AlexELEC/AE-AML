@@ -1,0 +1,19 @@
+[Unit]
+Description=AceProxy server
+Requires=network-online.target
+After=network-online.target acestream.service
+Before=kodi.service
+ConditionPathExists=/storage/.cache/services/aceproxy.conf
+
+[Service]
+ExecStartPre=/usr/bin/aceproxy-config
+ExecStart=/storage/.config/aceproxy/acehttp.py
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -TERM $MAINPID
+TimeoutStopSec=5
+Restart=always
+RestartSec=2
+StartLimitInterval=0
+
+[Install]
+WantedBy=kodi.target

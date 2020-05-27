@@ -1,0 +1,13 @@
+{
+	"enabled": true,
+	"ondemand": true,
+	"path": "/storage/records",
+	"max_period": 60,
+	"unlimited_period": false,
+	"max_size": 1808,
+	"ram_size": 0,
+	"unlimited_size": false,
+	"ram_only": false,
+	"ram_fit": false,
+	"teletext": false
+}

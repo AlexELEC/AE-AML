@@ -1,0 +1,18 @@
+diff -Naurp kodi/xbmc/network/NetworkServices.cpp kodi-patch/xbmc/network/NetworkServices.cpp
+--- kodi/xbmc/network/NetworkServices.cpp	2018-09-10 10:02:46.000000000 +0300
++++ kodi-patch/xbmc/network/NetworkServices.cpp	2018-09-10 10:50:43.000000000 +0300
+@@ -482,10 +482,10 @@ void CNetworkServices::Start()
+ #endif // HAS_WEB_SERVER
+   if (m_settings->GetBool(CSettings::SETTING_SERVICES_UPNP))
+     StartUPnP();
+-  if (m_settings->GetBool(CSettings::SETTING_SERVICES_ESENABLED) && !StartEventServer())
+-    CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Warning, g_localizeStrings.Get(33102), g_localizeStrings.Get(33100));
+-  if (m_settings->GetBool(CSettings::SETTING_SERVICES_ESENABLED) && !StartJSONRPCServer())
+-    CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Warning, g_localizeStrings.Get(33103), g_localizeStrings.Get(33100));
++  if (m_settings->GetBool(CSettings::SETTING_SERVICES_ESENABLED)) {
++    StartEventServer();
++    StartJSONRPCServer();
++  }
+ 
+   // note - airtunesserver has to start before airplay server (ios7 client detection bug)
+   StartAirTunesServer();

@@ -1,0 +1,102 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+################################################################################
+# Colors
+ESC_SEQ="\x1b["
+COL_RESET=$ESC_SEQ"39;49;00m"
+COL_RED=$ESC_SEQ"31;01m"
+COL_YELLOW=$ESC_SEQ"33;01m"
+COL_BLUE=$ESC_SEQ"34;01m"
+################################################################################
+
+IMAGE_KERNEL="/flash/kernel.img"
+IMAGE_SYSTEM="/flash/SYSTEM"
+ACE_RUN="/storage/.cache/services/acestream.conf"
+
+install_to_nand() {
+  if [ -f $IMAGE_KERNEL -a -f $IMAGE_SYSTEM ] ; then
+    if grep -q /dev/system /proc/mounts ; then
+      echo "Unmounting SYSTEM partiton."
+      umount -f /dev/system
+    fi
+    if systemctl is-active storage-nand.mount &>/dev/null ; then
+      echo "Unmounting DATA partiton."
+      systemctl stop storage-nand.mount
+    fi
+    mkdir -p /tmp/system
+
+    mount -o rw,remount /flash
+
+    echo -n "Writing kernel image..."
+    dd if="$IMAGE_KERNEL" of=/dev/boot bs=64k status=none
+    echo "done."
+
+    echo -n "Formatting SYSTEM partition..."
+    mke2fs -F -q -t ext4 -m 0 /dev/system > /dev/null
+    e2fsck -n /dev/system &> /dev/null
+    echo "done."
+
+    echo -n "Copying SYSTEM files..."
+    mount -o rw /dev/system /tmp/system
+    cp $IMAGE_SYSTEM /tmp/system && sync
+    umount /tmp/system
+    echo "done."
+
+    echo -n "Formatting DATA partition..."
+    mke2fs -F -q -t ext4 -m 0 /dev/data > /dev/null
+    e2fsck -n /dev/data &> /dev/null
+    echo "done."
+
+    read -p "Do you want to copy your user data to internal data partition? [Y/n] " choice
+    case "$choice" in
+      [nN]*)
+        ;;
+      *)
+        if [ -f $ACE_RUN ] ; then
+          echo -n "Stopping AceStream..."
+          systemctl stop acestream
+          echo "done."
+        fi
+        echo -n "Stopping Kodi..."
+        systemctl stop kodi
+        echo "done."
+        echo "Copying user data..."
+        mkdir -p /tmp/data
+        mount -o rw /dev/data /tmp/data
+        cp -av /storage/. /tmp/data/
+        umount /tmp/data
+        if [ -f $ACE_RUN ] ; then
+          echo -n "Restarting AceStream..."
+          systemctl start acestream
+          echo "done."
+        fi
+        echo -n "Restarting Kodi..."
+        systemctl start kodi
+        echo "done."
+        ;;
+    esac
+
+    echo ""
+    echo -e "${COL_BLUE}All done!${COL_YELLOW} You can now continue using your AlexELEC system or type \"${COL_RED}nand-reboot${COL_YELLOW}\" to reboot from internal memory.${COL_RESET}"
+    echo ""
+
+  else
+    echo ""
+    echo -e "${COL_RED}No AlexELEC image found on /flash! Exiting...${COL_RESET}"
+    echo ""
+  fi
+}
+
+echo ""
+echo -e "${COL_RED}This script will erase BOOT, SYSTEM and DATA on your device${COL_RESET}"
+echo -e "${COL_RED}and install AlexELEC that you booted from SD card/USB drive.${COL_RESET}"
+echo ""
+echo -e "${COL_YELLOW}The script does not have any safeguards!${COL_RESET}"
+echo ""
+read -p "Type \"yes\" if you know what you are doing or anything else to exit: " choice
+case "$choice" in
+  yes) install_to_nand ;;
+esac

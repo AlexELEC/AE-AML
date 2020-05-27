@@ -1,0 +1,190 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+################################################################################
+# Colors
+ESC_SEQ="\x1b["
+COL_RESET=$ESC_SEQ"39;49;00m"
+COL_RED=$ESC_SEQ"31;01m"
+COL_GREEN=$ESC_SEQ"32;01m"
+COL_YELLOW=$ESC_SEQ"33;01m"
+COL_BLUE=$ESC_SEQ"34;01m"
+COL_MAGENTA=$ESC_SEQ"35;01m"
+COL_CYAN=$ESC_SEQ"36;01m"
+################################################################################
+
+
+LOGOS_BG_COLOR="GreyB"
+LOGOS_FG_COLOR="4"
+LOGOS_TEXT_COLOR="black"
+LOGOS_CLEAR="1"
+
+SERVICE_DIR="/storage/.cache/services"
+[ -f "$SERVICE_DIR/logos.conf" ] && . $SERVICE_DIR/logos.conf
+
+TMP_DIR="/tmp/hbox"
+TMP_DIR_LOGO="$TMP_DIR/logos_src"                           #logo temp directory
+SOURCE_DIR_LOGOS="$TMP_DIR_LOGO/logos"                      #logo source directory <logos>
+SOURCE_DIR_BACKG="$TMP_DIR_LOGO/backgrounds"                #logo source directory <backgrounds>
+BACKGROUND="$SOURCE_DIR_BACKG/bg-${LOGOS_BG_COLOR}.png"     #patch to background
+FOREGROUND="$SOURCE_DIR_BACKG/fg${LOGOS_FG_COLOR}.png"      #patch to foreground
+OUTPUT_DIR_TEMP="$SOURCE_DIR_LOGOS/tmp"
+RESIZE='220x164'
+EXTENT='268x200'
+LOGOS_DIR="/storage/picons/iptv"
+M3U_DIR="/storage/ttv-m3u"
+
+IP_BOX="$1"
+URL_GROUP="http://$IP_BOX:8875/group.m3u"
+GROUPS=`curl -s "$URL_GROUP" | sed 's/.$//; /^$/d; 1,4d' | iconv -c -f UTF-8 -t UTF-8 | sed 's/^[ \t]*//; s/[ \t]*$//; s/#EXTINF:0,//g; /$/N; s/\n/ # /;'`
+
+if [ -z "$GROUPS" ]; then
+  echo "Error! Can not connect to HelloBox by IP address: $IP_BOX"
+  exit
+fi
+
+rm -rf $TMP_DIR
+mkdir -p $TMP_DIR
+
+echo "$GROUPS" |
+  while read -r LINE ; do
+    GRP_NAME=`echo $LINE | awk -F\\# '{print $1}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+    GRP_PATH=`echo $LINE | awk -F\\# '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+    if [ -n "$GRP_NAME" -a -n "$GRP_PATH" ]; then
+        curl -s "$GRP_PATH" | sed 's/.$//; /^$/d; 1d' | iconv -c -f UTF-8 -t UTF-8 | sed "s/^[ \t]*//; s/[ \t]*$//; s/^#EXTINF:0/#EXTINF:0 group-title=\"$GRP_NAME\"/g" >> $TMP_DIR/tmp.m3u
+    fi
+  done
+
+mkdir -p $TMP_DIR_LOGO
+
+if [ -e "/storage/downloads/logos.tar.bz2" ]; then
+  cp -f /storage/downloads/logos.tar.bz2 $TMP_DIR_LOGO/logos.tar.bz2
+else
+  echo "Download logos..."
+  wget -q -t 2 -T 5 --no-check-certificate -O $TMP_DIR_LOGO/logos.tar.bz2 'https://github.com/AlexELEC/channel-logos/releases/download/v1.0/logos.tar.bz2'
+  cp -f $TMP_DIR_LOGO/logos.tar.bz2 /storage/downloads/logos.tar.bz2
+fi
+
+if [ ! -e "$TMP_DIR_LOGO/logos.tar.bz2" ]; then
+  echo "Error: not found logos file!"
+  exit
+fi
+
+echo "Unpack logos..."
+tar -jxf $TMP_DIR_LOGO/logos.tar.bz2 -C $TMP_DIR_LOGO
+
+echo "Create playlist..."
+LAST_CH_NAME=''
+cat $TMP_DIR/tmp.m3u |
+  while read -r LINE ; do
+    case "$LINE" in 
+      "#EXTINF:0"*)
+          CH_NAME=`echo $LINE | awk -F'",' '{print $2}' |  sed 's/://g; s/\//-/g;'`
+          echo "$CH_NAME" >> $TMP_DIR_LOGO/channels.list
+          IS_LOGO_FILE=`find "$TMP_DIR_LOGO/logos" -iname "$CH_NAME.png" | grep -m1 .`
+          if [ -n "$IS_LOGO_FILE" ]; then
+            LOGO_NAME=$(basename "$IS_LOGO_FILE")
+            echo "$LOGO_NAME" >> $TMP_DIR_LOGO/is-logo.list
+          else
+            LOGO_NAME="$CH_NAME.png"
+            echo "$LOGO_NAME" >> $TMP_DIR_LOGO/miss-logo.list
+          fi
+          LOGO_NAME=`echo "$LOGO_NAME" | sed 's/+/plus/g'`
+          EXTINF_STR=`echo "$LINE" | sed "s/^#EXTINF:0/#EXTINF:0 tvg-logo=\"file:\/\/\/storage\/picons\/iptv\/$LOGO_NAME\"/"`
+          echo "$EXTINF_STR" >> $TMP_DIR/sat.m3u
+          echo "$EXTINF_STR" >> $TMP_DIR/tvh.m3u
+          echo "pipe://tvh-stream $CH_NAME" >> $TMP_DIR/tvh.m3u
+          LAST_CH_NAME="$CH_NAME"
+      ;;
+      "http://"*)
+          echo "$LINE" >> $TMP_DIR/sat.m3u
+          echo "$LAST_CH_NAME # $LINE" >> $TMP_DIR/tvh.list
+      ;;
+      *)
+          continue
+      ;;
+    esac
+  done
+
+sed -i '1i#EXTM3U' $TMP_DIR/sat.m3u
+sed -i '1i#EXTM3U' $TMP_DIR/tvh.m3u
+cp -f $TMP_DIR_LOGO/channels.list /tmp/HelloBox-channels.name
+
+mkdir -p $M3U_DIR
+cp -f $TMP_DIR/sat.m3u $M3U_DIR/HelloBox.m3u
+cp -f $TMP_DIR/tvh.m3u $M3U_DIR/HelloBox-TVH.m3u
+cp -f $TMP_DIR/tvh.list $M3U_DIR/HelloBox-TVH.list
+
+# Convert downloaded logos
+mkdir -p $LOGOS_DIR
+[ "$LOGOS_CLEAR" == "1" ] && rm -rf $LOGOS_DIR/*
+
+echo "Convertion logos..."
+cat $TMP_DIR_LOGO/is-logo.list |
+  while read -r LOGO_FILE ; do
+    target_file="$LOGOS_DIR/$LOGO_FILE"
+    if [ ! -e "$target_file" ] ; then
+      echo -e "${COL_YELLOW}Convertion logo: ${COL_MAGENTA}${target_file}${COL_RESET}"
+      convert +dither -background 'transparent' -resize $RESIZE -extent $EXTENT -gravity 'center' "$SOURCE_DIR_LOGOS/$LOGO_FILE" png:- 2> /dev/null | \
+        composite - $BACKGROUND png:- 2> /dev/null | \
+        composite -compose screen -blend 50x100 $FOREGROUND - "$target_file" 2> /dev/null
+    fi
+  done
+
+# Generating the missing logos
+if [ -s "$TMP_DIR_LOGO/miss-logo.list" ]; then
+  cp -f $TMP_DIR_LOGO/miss-logo.list /tmp/HelloBox-logos.missing
+  echo "Create missing logos..."
+  rm -rf $OUTPUT_DIR_TEMP
+  mkdir -p $OUTPUT_DIR_TEMP
+
+  cat $TMP_DIR_LOGO/miss-logo.list |
+    while read -r LOGO_FILE ; do
+      target_file="$LOGOS_DIR/$LOGO_FILE"
+      if [ ! -e "$target_file" ] ; then
+        echo -e "${COL_YELLOW}Create missing logo: ${COL_MAGENTA}${target_file}${COL_RESET}"
+        tmp_file="$OUTPUT_DIR_TEMP/$LOGO_FILE"
+        ch_text=$(echo "$LOGO_FILE" | sed 's/\.png$//')
+
+        montage \
+            -size 268x200 \
+            -background none \
+            -gravity center \
+            -fill $LOGOS_TEXT_COLOR \
+            -font Open-Sans \
+            label:"$ch_text" +set label \
+            -shadow \
+            -background transparent \
+            -geometry +5+5 \
+            "$tmp_file" 2> /dev/null
+
+        convert +dither -background 'transparent' -resize $RESIZE -extent $EXTENT -gravity 'center' "$tmp_file" png:- 2> /dev/null | \
+            composite - $BACKGROUND png:- 2> /dev/null | \
+            composite -compose screen -blend 50x100 $FOREGROUND - "$target_file" 2> /dev/null
+      fi
+    done
+  rm -rf $OUTPUT_DIR_TEMP
+fi
+
+# rename logos
+echo "Rename logos..."
+ls $LOGOS_DIR/* > $TMP_DIR/rename.list
+
+cat $TMP_DIR/rename.list |
+  while read -r icon; do
+    case $icon in
+      *"+"*)
+        new_icon=`echo "$icon" | sed 's/+/plus/g'`
+        echo -e "${COL_YELLOW}Rename logo: ${COL_MAGENTA}${new_icon}${COL_RESET}"
+        mv -f "$icon" "$new_icon"
+      ;;
+    esac
+  done
+
+
+rm -rf $TMP_DIR
+
+echo "  Done."
+exit

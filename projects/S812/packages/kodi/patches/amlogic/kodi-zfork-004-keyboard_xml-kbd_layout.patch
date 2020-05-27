@@ -1,0 +1,11 @@
+diff -Naurp kodi-c6107e5/system/keymaps/keyboard.xml kodi-c6107e5-patch/system/keymaps/keyboard.xml
+--- kodi-c6107e5/system/keymaps/keyboard.xml	2018-12-10 15:54:09.000000000 +0200
++++ kodi-c6107e5-patch/system/keymaps/keyboard.xml	2018-12-10 15:57:35.000000000 +0200
+@@ -172,6 +172,7 @@
+       <k mod="ctrl,shift">ReloadKeymaps</k>
+       <d mod="ctrl,shift">ToggleDebug</d>
+       <r mod="ctrl,shift">ToggleDirtyRegionVisualization</r>
++      <escape mod="ctrl">RunAddon(script.key.layout)</escape>
+     </keyboard>
+   </global>
+   <LoginScreen>

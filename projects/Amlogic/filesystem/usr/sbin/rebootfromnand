@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2016-2018 kszaq (kszaquitto@gmail.com)
+# Copyright (C) 2016-present AlexELEC (http://alexelec.in.ua)
+
+/usr/sbin/fw_setenv bootfromnand 1

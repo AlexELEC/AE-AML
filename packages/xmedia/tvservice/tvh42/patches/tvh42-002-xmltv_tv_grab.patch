@@ -1,0 +1,20 @@
+diff -Naurp tvheadend-2f07ea0/src/epggrab/module/xmltv.c tvheadend-2f07ea0-patch/src/epggrab/module/xmltv.c
+--- tvheadend-2f07ea0/src/epggrab/module/xmltv.c	2017-09-10 15:05:04.000000000 +0300
++++ tvheadend-2f07ea0-patch/src/epggrab/module/xmltv.c	2017-09-10 16:08:36.000000000 +0300
+@@ -43,6 +43,7 @@
+ 
+ #define XMLTV_FIND "tv_find_grabbers"
+ #define XMLTV_GRAB "tv_grab_"
++#define XMLTV_DIRP "/storage/.config/tvheadend/bin"
+ 
+ /* **************************************************************************
+  * Parsing
+@@ -848,7 +849,7 @@ static void _xmltv_load_grabbers ( void
+     free(outbuf);
+ 
+   /* Internal search */
+-  } else if ((tmp = getenv("PATH"))) {
++  } else if ((tmp = XMLTV_DIRP)) {
+     tvhdebug(LS_XMLTV, "using internal grab search");
+     char bin[PATH_MAX];
+     char *argv[] = {

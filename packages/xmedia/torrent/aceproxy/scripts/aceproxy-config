@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+SERVICE_DIR="/storage/.cache/services"
+ACEPROXY_DIR="/storage/.config/aceproxy"
+ACEPROXY_DEBUG="INFO"
+
+[ -f $SERVICE_DIR/aceproxy.conf ] && . $SERVICE_DIR/aceproxy.conf
+
+rm -f $ACEPROXY_DIR/aceconfig.pyo
+
+# Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+sed -i -e "s/loglevel = logging.*/loglevel = logging\.$ACEPROXY_DEBUG/" $ACEPROXY_DIR/aceconfig.py

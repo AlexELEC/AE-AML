@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<shortcuts>
+	<shortcut>
+		<defaultID>service.coreelec.settings</defaultID>
+		<label>Настройки</label>
+		<label2>Пользовательский элемент</label2>
+		<icon>special://skin/extras/icons/DefaultAddon.png</icon>
+		<thumb>image://%2fusr%2fshare%2fkodi%2faddons%2fservice.coreelec.settings%2fresources%2ficon.png/</thumb>
+		<action>RunAddOn(service.alexelec.settings)</action>
+	</shortcut>
+	<shortcut>
+		<defaultID>24001</defaultID>
+		<label>24001</label>
+		<label2>Настройки</label2>
+		<icon>special://skin/extras/icons/addons.png</icon>
+		<thumb />
+		<action>ActivateWindow(AddonBrowser)</action>
+	</shortcut>
+	<shortcut>
+		<defaultID>7</defaultID>
+		<label>7</label>
+		<label2 />
+		<icon>DefaultShortcut.png</icon>
+		<thumb />
+		<action>ActivateWindow(FileManager)</action>
+	</shortcut>
+	<shortcut>
+		<defaultID>20077</defaultID>
+		<label>Обложка</label>
+		<label2>Пользовательский элемент</label2>
+		<icon>DefaultShortcut.png</icon>
+		<thumb />
+		<action>ActivateWindow(SkinSettings)</action>
+	</shortcut>
+	<shortcut>
+		<defaultID>130</defaultID>
+		<label>130</label>
+		<label2 />
+		<icon>DefaultShortcut.png</icon>
+		<thumb />
+		<action>ActivateWindow(SystemInfo)</action>
+	</shortcut>
+</shortcuts>

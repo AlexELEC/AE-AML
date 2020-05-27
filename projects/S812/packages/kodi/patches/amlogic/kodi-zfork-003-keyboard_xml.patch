@@ -1,0 +1,74 @@
+diff -Naurp kodi-7a4650f/system/keymaps/keyboard.xml kodi-7a4650f-patch/system/keymaps/keyboard.xml
+--- kodi-7a4650f/system/keymaps/keyboard.xml	2018-08-07 14:50:54.000000000 +0300
++++ kodi-7a4650f-patch/system/keymaps/keyboard.xml	2018-08-07 15:10:07.000000000 +0300
+@@ -52,6 +52,7 @@
+       <m>Menu</m>
+       <n mod="ctrl">ActivateWindow(PlayerControls)</n>
+       <s>ActivateWindow(ShutdownMenu)</s>
++      <s mod="longpress">ShutDown()</s>
+       <escape>Back</escape>
+       <escape mod="longpress">Back</escape>
+       <i>Info</i>
+@@ -108,6 +109,10 @@
+       <green>ActivateWindow(Videos)</green>
+       <yellow>ActivateWindow(Music)</yellow>
+       <blue>ActivateWindow(Pictures)</blue>
++      <f1>ActivateWindow(TVChannels)</f1>
++      <f2>ActivateWindow(Videos)</f2>
++      <f3>ActivateWindow(Music)</f3>
++      <f4>ActivateWindow(Pictures)</f4>
+       <!-- Multimedia keyboard keys -->
+       <browser_back>Back</browser_back>
+       <browser_forward/>
+@@ -357,6 +362,7 @@
+       <i>Info</i>
+       <o>PlayerProcessInfo</o>
+       <o mod="ctrl,shift">PlayerDebug</o>
++      <o mod="longpress">PlayerDebug</o>
+       <z>AspectRatio</z>
+       <zoom>AspectRatio</zoom>
+       <t>ShowSubtitles</t>
+@@ -370,12 +376,11 @@
+       <down mod="longpress">NextSubtitle</down>
+       <left mod="alt">PlayerControl(tempodown)</left>
+       <right mod="alt">PlayerControl(tempoup)</right>
+-      <a>AudioDelay</a>
+-      <a mod="ctrl">AudioNextLanguage</a>
++      <a>AudioNextLanguage</a>
++      <a mod="longpress">AudioDelay</a>
+       <leftquote>AudioNextLanguage</leftquote>
+       <escape>Fullscreen</escape>
+       <c>Playlist</c>
+-      <v>ActivateWindow(Teletext)</v>
+       <v mod="ctrl">VideoNextStream</v>
+       <text>ActivateWindow(Teletext)</text>
+       <up mod="ctrl">SubtitleShiftUp</up>
+@@ -562,7 +567,7 @@
+       <zoom>AspectRatio</zoom>
+       <t>ShowSubtitles</t>
+       <l>NextSubtitle</l>
+-      <a>AudioDelay</a>
++      <a>AudioNextLanguage</a>
+       <escape>Fullscreen</escape>
+       <return>Select</return>
+       <enter>Select</enter>      <!-- backspace>Fullscreen</backspace -->
+@@ -667,8 +672,8 @@
+   </NumericInput>
+   <FullscreenLiveTV>
+     <keyboard>
+-      <left>StepBack</left>
+-      <right>StepForward</right>
++      <left>ActivateWindow(PVROSDChannels)</left>
++      <right>ActivateWindow(PVRChannelGuide)</right>
+       <up>Up</up>
+       <down>Down</down>
+       <return>OSD</return>
+@@ -677,7 +682,7 @@
+       <c>ActivateWindow(PVROSDChannels)</c>
+       <return mod="longpress">ActivateWindow(PVROSDChannels)</return>
+       <enter mod="longpress">ActivateWindow(PVROSDChannels)</enter>
+-      <leftquote>AudioNextLanguage</leftquote>
++      <a>AudioNextLanguage</a>
+       <pageup>ChannelUp</pageup>
+       <pagedown>ChannelDown</pagedown>
+       <period mod="longpress">ChannelNumberSeparator</period>

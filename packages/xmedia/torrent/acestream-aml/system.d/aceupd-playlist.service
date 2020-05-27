@@ -1,0 +1,14 @@
+[Unit]
+Description=Ace playlists Update service
+Before=kodi.service tvheadend.service
+After=network-online.target
+Wants=tvheadend.service
+ConditionPathExists=/storage/.cache/services/acerun.conf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/aceupdplist.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=kodi.service

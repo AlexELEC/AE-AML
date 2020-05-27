@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+TVH_IP="127.0.0.1"
+XMLTV_LOCATION_WEB="http://${TVH_IP}:9981/xmltv/channels"
+
+XMLTV_DIR="/storage/.config/tvheadend/xmltv.data"
+XMLTV_FILE_GZ="$XMLTV_DIR/tvh.xml.gz"
+
+################################### --MAIN-- #####################################
+
+if [ $# -lt 1 ]; then
+  . /etc/profile
+
+  mkdir -p $XMLTV_DIR
+  curl -s -k --connect-timeout 5 --max-time 20 -R -z "$XMLTV_FILE_GZ" -o "$XMLTV_FILE_GZ" -H "Accept-Encoding: gzip" "$XMLTV_LOCATION_WEB"
+  [ ! -e "$XMLTV_FILE_GZ" ] && exit 1
+  zcat "$XMLTV_FILE_GZ"
+  exit 0
+fi
+
+dflag=
+vflag=
+cflag=
+
+for a in "$@"
+do
+  [ "$a" = "-d" -o "$a" = "--description"  ] && dflag=1
+  [ "$a" = "-v" -o "$a" = "--version"      ] && vflag=1
+  [ "$a" = "-c" -o "$a" = "--capabilities" ] && cflag=1
+done
+
+if [ -n "$dflag" ]
+then
+  echo "Tvheadend ($TVH_IP) grabber"
+fi
+
+if [ -n "$vflag" ]
+then
+  echo "1.0"
+fi
+
+if [ -n "$cflag" ]
+then
+  echo "baseline"
+fi

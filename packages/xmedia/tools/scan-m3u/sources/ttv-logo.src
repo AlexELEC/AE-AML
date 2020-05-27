@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+SERVICE_DIR="/storage/.cache/services"
+[ -f $SERVICE_DIR/acerun.conf ] && . $SERVICE_DIR/acerun.conf
+
+if [ "$TTV_LOGIN" == "@TTV_WORD@" ]; then
+  TTV_LOGIN="@TTV_LOGIN@"
+  TTV_PASSW="@TTV_PASSW@"
+elif [ -z "$TTV_LOGIN" -o -z "$TTV_PASSW" ]; then
+  exit
+fi
+
+TTV_API_URL="http://1ttvxbmc.top/v3"
+GUID=`cat /proc/sys/kernel/random/uuid | sed 's|-||g'`
+TTV_SESSION=`curl -s "$TTV_API_URL/auth.php?username=$TTV_LOGIN&password=$TTV_PASSW&typeresult=json&application=xbmc&guid=$GUID" | jq -r '.session'`
+[ -z "$TTV_SESSION" ] && exit
+
+ACE_DIR="/storage/.config/acestream"
+TTV_LOGOS="$ACE_DIR/ttv-logo.list"
+TMP_LOGOS="/tmp/ttv-logo.list"
+
+curl -s "$TTV_API_URL/channel_list.php?session=$TTV_SESSION&type=torrent&typeresult=json" | jq -r '.channels[] | .name + " # " + .logo' > $TMP_LOGOS
+
+if [ -f $TTV_LOGOS ]; then
+  cat $TMP_LOGOS |  
+      while read -r LINE ; do
+          CH_NAME=`echo $LINE | awk -F\\# '{print $1}' | sed 's/^[ \t]*//; s/[ \t]*$//'`
+          grep -q "$CH_NAME" $TTV_LOGOS && continue || echo $LINE >> $TTV_LOGOS
+      done
+else
+  mkdir -p $ACE_DIR
+  cp -f $TMP_LOGOS $TTV_LOGOS
+fi
+
+rm -f $TMP_LOGOS
+echo "TTV logos: complete."

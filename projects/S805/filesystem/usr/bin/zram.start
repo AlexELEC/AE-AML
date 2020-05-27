@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2011-present Alex@ELEC (http://alexelec.in.ua)
+
+INSTALLED_MEMORY=$(cat /proc/meminfo | grep 'MemTotal:' | awk '{print $2}')
+SYSTEM_TORAM_LIMIT=2048000
+
+if [ "$INSTALLED_MEMORY" -lt "$SYSTEM_TORAM_LIMIT" ]; then
+  modprobe zram num_devices=4
+  echo 256M > /sys/block/zram0/disksize
+  echo 256M > /sys/block/zram1/disksize
+  echo 256M > /sys/block/zram2/disksize
+  echo 256M > /sys/block/zram3/disksize
+  /sbin/mkswap /dev/zram0
+  /sbin/mkswap /dev/zram1
+  /sbin/mkswap /dev/zram2
+  /sbin/mkswap /dev/zram3
+  /usr/sbin/swapon -p 10 /dev/zram0
+  /usr/sbin/swapon -p 10 /dev/zram1
+  /usr/sbin/swapon -p 10 /dev/zram2
+  /usr/sbin/swapon -p 10 /dev/zram3
+fi
+
+# Configure frequency scaling properties
+for policy in $(find /sys/devices/system/cpu/cpufreq -name hotplug 2>/dev/null) ; do
+  echo 1 > $policy/cpu_num_plug_once
+  echo 2 > $policy/cpu_num_unplug_once
+done

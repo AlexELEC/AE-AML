@@ -1,0 +1,256 @@
+#!/bin/bash
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2009-2016 Stephan Raue (stephan@openelec.tv)
+# Copyright (C) 2018 Team LibreELEC (https://libreelec.tv)
+# Copyright (C) 2018-present Team CoreELEC (https://coreelec.org)
+
+. config/options ""
+
+# usage
+usage() {
+  cat - >&2 <<EOUSAGE
+SYNOPSIS
+       ./script/create_addon_mt [OPTION] [addons]...
+
+DESCRIPTION
+       create_addon_mt builds one or more addons.
+
+       --help shows this message
+
+       [addons]
+              list of addons to build.
+              The addons can identified by:
+              - the name of the addon
+              - a group name of addons
+                  * all - all addons found under packages and project/*/packages
+                  * official - all addons found under packages/addons
+                  * binary - all addons found under packages/mediacenter/kodi-binary-addons
+              - a regex term (grep styled), the term is automatic sorounded with string begin and end (^[term]$)
+
+              addons can removed from list with a leading minus.
+
+EXAMPLE
+       build all addons
+       > ./scripts/create_addon_mt all
+
+       build audio encoders and decoders, only
+       > ./scripts/create_addon_mt audioencoder.* audiodecoder.*
+
+       build all, but not binary
+       > ./scripts/create_addon_mt all -binary
+
+EOUSAGE
+  exit ${1:0}
+}
+
+# functions
+function find_addons() {
+  local _paths=""
+  local _filter="."
+  case $1 in
+    binary)      _paths="$ROOT/packages/mediacenter/kodi-binary-addons";;
+    official)     _paths="$ROOT/packages/addons";;
+    all)         _paths="$ROOT/packages $ROOT/projects/*/packages";;
+    *)           _paths="$ROOT/packages $ROOT/projects/*/packages";
+                 _filter="^$1$";;
+  esac
+
+  local _addons=$(
+    find $_paths -name 'package.mk' \
+      `# select packages with PKG_IS_ADDON (can yes, no or unset at this moment)` \
+      | xargs grep -l 'PKG_IS_ADDON' \
+      `# extract package name from path` \
+      | sed 's|^.*/\([^/]*\)/package.mk$|\1|g' \
+      `# filter package list against the given filter` \
+      | grep -e "$_filter" \
+      `# make entries unique` \
+      | sort -u \
+      `# select packages with PKG_IS_ADDON=yes (slow, but is a short list, now)` \
+      | xargs -n1 -I{} /bin/bash -c '. ./config/options {} &>/dev/null; [ "$PKG_IS_ADDON" = "yes" ] && echo $PKG_NAME'
+  )
+
+  # check if anything is found
+  local _count=$(wc -w <<< $_addons)
+  if [ $_count -eq 0 ]; then
+    # handle embedded addons here. Should only build when they are explictly specified in the addon list
+    ( . ./config/options "$1" &>/dev/null
+      [ "$PKG_IS_ADDON" != "embedded" -a "$PKG_IS_ADDON" != "yes" ] && exit 1
+      echo $PKG_NAME
+    )
+
+    # abort when nothing found and not embedded
+    if [ $? -ne 0 ]; then
+      echo  "$(print_color CLR_ERROR "ERROR: '$1' matches nothing...")" >&$SILENT_OUT
+      echo  "for more informations type: ./scripts/create_addon_mt --help" >&$SILENT_OUT
+      die
+    fi
+  fi
+
+  echo $_addons
+}
+
+pack_addon() {
+  scripts/install_addon $PKG_NAME $PKG_ADDON_ID || exit
+
+  if [ "$2" != "-test" ] ; then
+    ADDON_INSTALL_DIR="$TARGET_IMG/$ADDONS/$ADDON_VERSION/$PROJECT/$TARGET_ARCH/$PKG_ADDON_ID"
+    ADDONVER="$(xmlstarlet sel -t -v "/addon/@version" $ADDON_BUILD/$PKG_ADDON_ID/addon.xml)"
+
+    if [ -f $ADDON_INSTALL_DIR/$PKG_ADDON_ID-$ADDONVER.zip ]; then
+      if [ "$ADDON_OVERWRITE" = "yes" ]; then
+        rm $ADDON_INSTALL_DIR/$PKG_ADDON_ID-$ADDONVER.zip
+      else
+        printf  "%${BUILD_INDENT}c $(print_color CLR_WARNING "*** WARNING: $PKG_ADDON_ID-$ADDONVER.zip already exists. not overwriting it ***")\n" ' '>&$SILENT_OUT
+        return 0
+      fi
+    fi
+    cd $ADDON_BUILD
+    printf  "%${BUILD_INDENT}c $(print_color CLR_INFO "*** compressing Addon $PKG_ADDON_ID ... ***")\n" ' '>&$SILENT_OUT
+    $TOOLCHAIN/bin/7za a -l -mx9 -bsp0 -bso0 -tzip $PKG_ADDON_ID-$ADDONVER.zip $PKG_ADDON_ID
+    cd - &>/dev/null
+
+    mkdir -p $ADDON_INSTALL_DIR
+    cp $ADDON_BUILD/$PKG_ADDON_ID-$ADDONVER.zip $ADDON_INSTALL_DIR
+    if [ -f $ADDON_BUILD/$PKG_ADDON_ID/changelog.txt ]; then
+      cp $ADDON_BUILD/$PKG_ADDON_ID/changelog.txt $ADDON_INSTALL_DIR/changelog-$ADDONVER.txt
+    fi
+    if [ -f $ADDON_BUILD/$PKG_ADDON_ID/resources/icon.png ]; then
+      mkdir -p $ADDON_INSTALL_DIR/resources
+      cp $ADDON_BUILD/$PKG_ADDON_ID/resources/icon.png $ADDON_INSTALL_DIR/resources/icon.png
+    fi
+
+    # workaround for kodi pvr addons
+    if [ -f $ADDON_BUILD/$PKG_ADDON_ID/icon.png ]; then
+      cp $ADDON_BUILD/$PKG_ADDON_ID/icon.png $ADDON_INSTALL_DIR/icon.png
+    fi
+
+    if [ -f $ADDON_BUILD/$PKG_ADDON_ID/resources/fanart.png ]; then
+      mkdir -p $ADDON_INSTALL_DIR/resources
+      cp $ADDON_BUILD/$PKG_ADDON_ID/resources/fanart.png $ADDON_INSTALL_DIR/resources/fanart.png
+    fi
+    for f in $ADDON_BUILD/$PKG_ADDON_ID/resources/screenshot-*.{jpg,png}; do
+      if [ -f "$f" ]; then
+        mkdir -p $ADDON_INSTALL_DIR/resources
+        cp $f $ADDON_INSTALL_DIR/resources
+      fi
+    done
+
+    # Jenkins add-on build
+    if [ "$ADDON_JENKINS" = "yes" ]; then
+      ADDON_JENKINS_DIR="$TARGET_IMG/jenkins"
+      ADDON_JENKINS_ADDON_NAME="$ADDON_VERSION-${DEVICE:-$PROJECT}-$TARGET_ARCH-$PKG_ADDON_ID-$ADDONVER"
+      mkdir -p "$ADDON_JENKINS_DIR"
+      cd $ADDON_INSTALL_DIR
+      $TOOLCHAIN/bin/7za a -l -mx0 -bsp0 -bso0 -tzip $ADDON_JENKINS_DIR/$ADDON_JENKINS_ADDON_NAME.zip $PKG_ADDON_ID-$ADDONVER.zip resources/
+      ( cd $ADDON_JENKINS_DIR
+        sha256sum $ADDON_JENKINS_ADDON_NAME.zip > $ADDON_JENKINS_ADDON_NAME.zip.sha256
+      )
+      printf  "%${BUILD_INDENT}c $(print_color CLR_INFO "*** creating $ADDON_JENKINS_ADDON_NAME.zip for Jenkins complete ***")\n" ' '>&$SILENT_OUT
+    else
+      printf  "%${BUILD_INDENT}c $(print_color CLR_INFO "*** creating $PKG_ADDON_ID complete ***")\n" ' '>&$SILENT_OUT
+    fi
+  fi
+}
+
+not_supported_arch() {
+  printf  "%${BUILD_INDENT}c $(print_color CLR_WARNING "*** SKIP: $PKG_ADDON_ID: '${DEVICE:-$PROJECT}' not supported ***")\n" ' '>&$SILENT_OUT
+  exit 0
+}
+
+not_supported_device() {
+  printf  "%${BUILD_INDENT}c $(print_color CLR_WARNING "*** SKIP: $PKG_ADDON_ID: '$TARGET_ARCH' not supported ***")\n" ' '>&$SILENT_OUT
+  exit 0
+}
+
+# build addon function
+build_addon() {
+  # addon build
+  . config/options $1
+
+  # check support
+  if [ -n "$PKG_ARCH" ]; then
+    listcontains "$PKG_ARCH" "!$TARGET_ARCH" && not_supported_arch
+    listcontains "$PKG_ARCH" "$TARGET_ARCH" || listcontains "$PKG_ARCH" "any" || not_supported_arch
+  fi
+
+  if [ -n "$PKG_ADDON_PROJECTS" ]; then
+     [ "${DEVICE}" = "RPi" ] && _DEVICE="RPi1" || _DEVICE="${DEVICE}"
+
+    if listcontains "$PKG_ADDON_PROJECTS" "!${_DEVICE:-$PROJECT}" ||
+       listcontains "$PKG_ADDON_PROJECTS" "!${PROJECT}"; then
+      not_supported_device
+    fi
+
+    if ! listcontains "$PKG_ADDON_PROJECTS" "${_DEVICE:-$PROJECT}" &&
+       ! listcontains "$PKG_ADDON_PROJECTS" "${PROJECT}" &&
+       ! listcontains "$PKG_ADDON_PROJECTS" "any"; then
+      not_supported_device
+    fi
+  fi
+
+  # build addon
+  $SCRIPTS/build $1
+
+  # cleanup old install path
+  rm -rf $ADDON_BUILD
+
+  # install addon parts
+  if [ "$(type -t addon)" = "function" ]; then
+    addon
+  else
+    install_binary_addon $PKG_ADDON_ID
+  fi
+
+  # HACK for packages that provide multiple addons like screensavers.rsxs
+  # addon's addon() in package.mk should take care for exporting
+  # MULTI_ADDONS="addon.boo1 addon.boo2 addon.boo3"
+  if [ -n "$MULTI_ADDONS" ] ; then
+    for _ADDON in $MULTI_ADDONS ; do
+      PKG_ADDON_ID=$_ADDON
+      pack_addon
+    done
+  else
+    pack_addon
+  fi
+}
+
+# need parameter
+if [ $# -eq 0 ]; then
+  usage 1
+fi
+
+# collect list of addons for building
+addons=""
+addons_drop=""
+
+# read addons from parameter list
+while [ $# -gt 0 ]; do
+  case $1 in
+    --help)         usage 0;;
+    --*)            usage 1;;
+    -*)             addons_drop+=" $(find_addons ${1:1})";;
+    *)              addons+=" $(find_addons $1)";;
+  esac
+  shift
+done
+
+# check environment and create toolchain
+$SCRIPTS/checkdeps
+setup_toolchain target
+
+set +e
+_count=''
+
+echo "$(print_color CLR_AUTORECONF "CREATE ADDONS")" >&$SILENT_OUT
+for addon in $addons_drop; do
+  addons="$(listremoveitem "$addons" "$addon")"
+done
+
+export -f pack_addon build_addon not_supported_arch not_supported_device
+. $SCRIPTS/build_mt "$addons"
+
+echo
+echo "$(print_color CLR_BUILD "Built packages:") $built_list"
+#echo
+#echo "$(print_color CLR_WARNING "Packages not built:") $failed_list"

@@ -1,0 +1,28 @@
+diff -Naurp aceproxy-2561431/aceconfig.py aceproxy-2561431-patch/aceconfig.py
+--- aceproxy-2561431/aceconfig.py	2017-10-12 23:50:49.000000000 +0300
++++ aceproxy-2561431-patch/aceconfig.py	2019-06-12 17:52:50.000000000 +0300
+@@ -30,7 +30,7 @@ class AceConfig(acedefconfig.AceDefConfi
+     aceport = 62062
+     # Ace Stream age parameter (LT_13, 13_17, 18_24, 25_34, 35_44, 45_54,
+     # 55_64, GT_65)
+-    aceage = AceConst.AGE_18_24
++    aceage = AceConst.AGE_35_44
+     # Ace Stream sex parameter (MALE or FEMALE)
+     acesex = AceConst.SEX_MALE
+     # Ace Stream Engine startup timeout
+@@ -200,13 +200,13 @@ class AceConfig(acedefconfig.AceDefConfi
+     # Logging configuration
+     #
+     # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+-    loglevel = logging.DEBUG
++    loglevel = logging.INFO
+     # Log message format
+     logfmt = '%(filename)-20s [LINE:%(lineno)-4s]# %(levelname)-8s [%(asctime)s]  %(message)s'
+     # Log date format
+     logdatefmt='%d.%m %H:%M:%S'
+     # Full path to a log file
+-    logfile = None 
++    logfile = '/var/log/aceproxy.log' 
+     
+     # This method is used to detect fake requests. Some players send such 
+     # requests in order to detect the MIME type and/or check the stream availability.
