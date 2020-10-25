@@ -4,7 +4,7 @@ AlexELEC is a 'Just enough OS' Linux distribution for running Kodi on popular lo
 
 **Issues & Support**
 
-Please report issues via the AlexELEC [Forum](http://forum.alexelec.in.ua).
+Please report issues via the AlexELEC [Forum](https://forum.alexelec.tv). (It is in Russian language)
 
 **License**
 
