@@ -1,6 +1,6 @@
 # AlexELEC
 
-AlexELEC is a 'Just enough OS' Linux distribution for running Kodi on popular low-cost hardware. AlexELEC is a minor fork of [LibreELEC](https://libreelec.tv) and [CoreELEC](https://coreelec.org), it's built by the community for the community. [AlexELEC website](http://www.alexelec.in.ua).
+AlexELEC is a 'Just enough OS' Linux distribution for running Kodi on popular low-cost hardware. AlexELEC is a minor fork of [LibreELEC](https://libreelec.tv) and [CoreELEC](https://coreelec.org), it's built by the community for the community. [AlexELEC website](https://alexelec.tv). (It is in Russian language)
 
 **Issues & Support**
 
