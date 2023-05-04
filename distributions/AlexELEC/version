@@ -1,5 +1,5 @@
 # VERSION: set full version
-  LIBREELEC_VERSION="3.3.5"
+  LIBREELEC_VERSION="3.3.6"
 
 # OS_VERSION: OS Version
   OS_VERSION="9.0"
